@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 
 import torch
+from torchvision import transforms
 from torch.utils.data import random_split
 from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler
 
@@ -113,12 +114,13 @@ class GaussianDataset(Dataset):
     def __init__(self, X, Y): 
         self.X = X
         self.Y = Y
+        self.transform = transforms.ToTensor()
 
     def __len__(self):
         return len(self.X)
 
     def __getitem__(self, idx):
-        return self.X[idx], self.Y[idx]
+        return self.transform(self.X[idx]), self.transform(self.Y[idx])
 
 # Get Gaussian data
 def generate_gaussian_clusters(savedir):

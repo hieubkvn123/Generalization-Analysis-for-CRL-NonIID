@@ -5,9 +5,9 @@ import torch
 import pathlib
 import numpy as np
 import matplotlib.pyplot as plt
-from dataset import get_dataloader
-from common import apply_model_to_batch, save_json_dict
-from model import get_model, logistic_loss
+from dataloader.main import get_dataloader
+from dataloader.common import apply_model_to_batch, save_json_dict
+from models import get_model, logistic_loss
 
 # Visualization configs
 fontconfig = {
@@ -23,7 +23,7 @@ BATCH_SIZE = 64
 TRAIN_LOSS_THRESHOLD = 1e-2
 
 # Constants for ablation study
-DATASET_TO_INDIM = {'mnist' : 784}
+DATASET_TO_INDIM = {'mnist' : 784, 'gaussian' : 128}
 
 def train(epochs, dataset='mnist', d_dim=64, hidden_dim=128, k=3, L=2, batch_size=64, num_batches=1000):
     # Get dataset 
@@ -102,3 +102,6 @@ def train(epochs, dataset='mnist', d_dim=64, hidden_dim=128, k=3, L=2, batch_siz
         final_average_test_loss = total_loss / (num_test_batches * batch_size)
         print(f'Average test loss : {final_average_test_loss}')
     return final_average_train_loss, final_average_test_loss
+
+if __name__ == '__main__':
+    train(epochs=1000, dataset='gaussian')

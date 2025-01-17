@@ -4,8 +4,7 @@ import torch.nn as nn
 import tqdm
 import numpy as np
 
-from norms import frobenius_norm, l21_norm, spectral_norm 
-from common import get_default_device, apply_model_to_batch
+from dataloader.common import get_default_device, apply_model_to_batch
 
 # Network definition
 class Net(nn.Module):
@@ -44,11 +43,6 @@ class Net(nn.Module):
         )
         self.U = nn.Linear(hidden_dim, out_dim)
 
-        # Store reference matrices
-        self.references = []
-        for l in range(1, self.L + 1):
-            self.references.append(self._get_v_layer_weights(layer=l))
-        
     def _tensor_to_numpy(self, x):
         if self.device_type == 'cuda':
             return x.cpu().detach().numpy()            
