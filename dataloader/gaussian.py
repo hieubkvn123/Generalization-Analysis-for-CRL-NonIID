@@ -8,10 +8,12 @@ from torch.utils.data import random_split
 from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler
 
 # Some global constants 
-CLUSTER_STD = 0.5
-CLASS_PROBS = [0.15, 0.12, 0.10, 0.08, 0.05, 0.20, 0.10, 0.07, 0.08, 0.05] 
+DEFAULT_CLUSTER_STD = 0.5
+DEFAULT_NUM_CLASSES = 10
+DEFAULT_INPUT_DIM   = 128
+DEFAULT_CLASS_PROBS = [0.15, 0.12, 0.10, 0.08, 0.05, 0.20, 0.10, 0.07, 0.08, 0.05] 
 
-def _init_gaussian_centers(C=10, d=64):
+def _init_gaussian_centers(C=DEFAULT_NUM_CLASSES, d=DEFAULT_INPUT_DIM):
     '''
     @C: The number of Gaussian centers (classes) to initialize.
     @d: The dimensionality of the Gaussian centers.
@@ -60,7 +62,7 @@ def _configuration_matches(savedir, configs):
                 return False
     return True
 
-def _generate_raw_gaussian_clusters(savedir, class_probs=None, C=10, d=64, N=10e5, reinit=False):
+def _generate_raw_gaussian_clusters(savedir, class_probs=None, C=DEFAULT_NUM_CLASSES, d=DEFAULT_INPUT_DIM, N=10e5, reinit=False):
     '''
     @centers    : Gaussian centers.
     @class_probs: A list of class probabilities (sums up to 1, length equals number of centers).
@@ -95,7 +97,7 @@ def _generate_raw_gaussian_clusters(savedir, class_probs=None, C=10, d=64, N=10e
     X = np.array([])
     Y = np.array([])
     for i, (n_c, c) in enumerate(zip(sample_sizes, centers)):
-        X_c = np.random.normal(loc=c, scale=CLUSTER_STD, size=(n_c, d))
+        X_c = np.random.normal(loc=c, scale=DEFAULT_CLUSTER_STD, size=(n_c, d))
         if(i == 0):
             X, Y = X_c, np.full(n_c, i)
             continue
@@ -121,7 +123,7 @@ class GaussianDataset(Dataset):
 # Get Gaussian data
 def generate_gaussian_clusters(savedir):
     # Generate raw data
-    X, Y, _ = _generate_raw_gaussian_clusters(savedir, CLASS_PROBS)
+    X, Y, _ = _generate_raw_gaussian_clusters(savedir, DEFAULT_CLASS_PROBS)
     dataset = GaussianDataset(X, Y)
     
     # Split
@@ -134,4 +136,4 @@ def generate_gaussian_clusters(savedir):
 if __name__ == '__main__':
     # Some constants
     savedir = 'data/gaussian'
-    X, Y, _ = _generate_raw_gaussian_clusters(savedir, CLASS_PROBS) 
+    X, Y, _ = _generate_raw_gaussian_clusters(savedir, DEFAULT_CLASS_PROBS) 
