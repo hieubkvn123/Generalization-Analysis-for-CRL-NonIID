@@ -28,15 +28,17 @@ def apply_model_to_batch(model, batch, device=None):
 
 # Tuple data loader definition
 class UnsupervisedDataset(Dataset):
-    def __init__(self, dataset, k, n):
+    def __init__(self, dataset, k, n, regime='subsample'):
+        # Just to make sure
         super().__init__()
+        assert regime in ['subsample', 'all'], f'Invalid regime {regime}'
 
         # Store configurations
         self.k = k
         self.n = n
         self.dataset = dataset
         
-        # Mape labels to instance indices
+        # Map labels to instance indices
         self.label_to_indices = defaultdict(list)
         for idx, (_, label) in enumerate(self.dataset):
             self.label_to_indices[label].append(idx)
@@ -44,10 +46,39 @@ class UnsupervisedDataset(Dataset):
 
         # Get contrastive tuples
         self.all_labels = list(self.label_to_indices.keys())
-        self.all_tuples = self._initialize_data_tuples(n)
+        if regime == 'subsample':
+            self.all_tuples = self._subsample_data_tuples(n)
+        else:
+            self.all_tuples = self._generate_all_data_tuples()
+
+    # Get all possible tuples
+    def _generate_all_data_tuples(self):
+        # Initialize
+        all_tuples = set()
+
+        # For all class
+        for label in self.label_to_indices.keys():
+            positive_samples = set(self.label_to_indices[label])
+            negative_samples = set(np.concatenate([v for k, v in self.labels_to_indices.items() if k != label]))
+
+            # Get all permutations from positive and combinations from negative
+            permutations_pos = set(itertools.permutations(positive_samples, 2))
+            combinations_neg = set(itertools.combinations(negative_samples, self.k))
+
+            # Take the cartesian product
+            cartesian = itertools.product(permutations_pos, combinations_neg)
+
+            # Flatten the product
+            cartesian = set(
+                itertools.chain.from_iterable(
+                    (perm + comb) for perm, comb in cartesian_product
+                )
+            )
+            all_tuples = all_tuples.union(cartesian)
+        return list(all_tuples)
 
     # Sample from the original dataset n tuples of k+2 vectors
-    def _initialize_data_tuples(self, n):
+    def _subsample_data_tuples(self, n):
         all_tuples = []
         for _ in range(n):
             # Get a random index from original dataset
