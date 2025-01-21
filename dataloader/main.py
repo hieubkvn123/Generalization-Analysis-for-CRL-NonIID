@@ -33,7 +33,7 @@ def get_dataset(name='cifar100', k=3, n=1000):
 
 def get_dataloader(name='cifar100', save_path='cache', save_loader=True, batch_size=64, num_batches=1000, sample_ratio=1.0, k=3):
     # Get loader directly if saved
-    loader_dir = os.path.join(save_path, name, f'n{num_batches}-k{k}')
+    loader_dir = os.path.join(save_path, name, f'm{batch_size*num_batches}-k{k}')
     train_path = os.path.join(loader_dir, 'train.pth')
     test_path  = os.path.join(loader_dir, 'test.pth')
     if os.path.exists(train_path) and os.path.exists(test_path):

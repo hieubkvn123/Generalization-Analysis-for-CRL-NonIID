@@ -1,6 +1,7 @@
 import os
 import json
 import pickle
+import pathlib
 import numpy as np
 
 import torch
@@ -9,7 +10,7 @@ from torch.utils.data import random_split
 from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler
 
 # Some global constants 
-DEFAULT_CLUSTER_STD = 0.5
+DEFAULT_CLUSTER_STD = 0.1
 DEFAULT_NUM_CLASSES = 10
 DEFAULT_INPUT_DIM   = 128
 DEFAULT_CLASS_PROBS = [0.15, 0.12, 0.10, 0.08, 0.05, 0.20, 0.10, 0.07, 0.08, 0.05] 
@@ -63,6 +64,10 @@ def _configuration_matches(savedir, configs):
                 return False
     return True
 
+def _onehot_encode_ints_array(arr):
+    n_values = np.max(arr) + 1
+    return np.eye(n_values)[arr]
+
 def _generate_raw_gaussian_clusters(savedir, class_probs=None, C=DEFAULT_NUM_CLASSES, d=DEFAULT_INPUT_DIM, N=10e5, reinit=False):
     '''
     @centers    : Gaussian centers.
@@ -81,6 +86,8 @@ def _generate_raw_gaussian_clusters(savedir, class_probs=None, C=DEFAULT_NUM_CLA
 
     # Assemble configurations
     configs = {'N' : N, 'C' : C, 'd' : d, 'probs' : class_probs}
+    savedir = os.path.join(savedir, f'C{C}_d{d}_N{int(N)}')
+    pathlib.Path(savedir).mkdir(parents=True, exist_ok=True)
 
     # Check if need to reinit
     if not reinit:
@@ -104,6 +111,7 @@ def _generate_raw_gaussian_clusters(savedir, class_probs=None, C=DEFAULT_NUM_CLA
             continue
         X = np.concatenate([X, X_c])
         Y = np.concatenate([Y, np.full(n_c, i)])
+    X = X.astype(np.float32)
 
     # Save raw data
     _save_data(X, Y, configs, savedir)
@@ -120,7 +128,8 @@ class GaussianDataset(Dataset):
         return len(self.X)
 
     def __getitem__(self, idx):
-        return self.transform(self.X[idx]), self.transform(self.Y[idx])
+        # return self.transform(self.X[idx]), self.transform(self.Y[idx])
+        return self.X[idx], self.Y[idx]
 
 # Get Gaussian data
 def generate_gaussian_clusters(savedir):

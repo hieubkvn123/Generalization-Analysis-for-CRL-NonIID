@@ -76,14 +76,16 @@ class UnsupervisedDataset(Dataset):
         x_positive, _ = self.dataset[positive_idx]
 
         # Flatten
-        x = x.view(-1)
-        x_positive = x_positive.view(-1)
+        if len(x.shape) >= 2:
+            x = x.view(-1)
+            x_positive = x_positive.view(-1)
         
         # Get negative samples 
         negative_samples = []
         for negative_idx in current_instance[2:]:
             x_negative, _ = self.dataset[negative_idx]
-            x_negative = x_negative.view(-1)
+            if len(x_negative.shape) >= 2:
+                x_negative = x_negative.view(-1)
             negative_samples.append(x_negative)
         return (x, x_positive, negative_samples)
 
