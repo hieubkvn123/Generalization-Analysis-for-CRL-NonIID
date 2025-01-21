@@ -3,10 +3,41 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
+def check_unique_xaxis(x):
+    return len(x) == len(set(x))
+
 def plot_simple_line(x, y, outfile, figsize=(15, 7)):
     fig, ax = plt.subplots(figsize=figsize)
     ax.plot(x, y)
-    plt.savefig(outfile)
+
+    # Adding labels and title
+    plt.xlabel('X values')
+    plt.ylabel('Y values')
+    plt.title('Error bar plot')
+
+    # Show grid for better readability
+    plt.grid(True)
+
+    # Legend + save
+    plt.legend()
+    plt.savefig(outfile, bbox_inches='tight')
+
+def plot_errbar(x, y_mean, y_std, outfile, figsize=(15, 7)):
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.errorbar(x, y_mean, yerr=y_std, fmt='-o', capsize=3, color='b', label='Data with error bars', markersize=8)
+    
+    # Adding labels and title
+    plt.xlabel('X values')
+    plt.ylabel('Y values')
+    plt.title('Error bar plot')
+
+    # Show grid for better readability
+    plt.grid(True)
+
+    # Legend + save
+    plt.legend()
+    plt.savefig(outfile, bbox_inches='tight')
+
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -18,6 +49,15 @@ if __name__ == '__main__':
 
     if os.path.exists(args['outfile']):
         df = pd.read_csv(args['outfile'])
-        plot_simple_line(df[args['xaxis']], df[args['yaxis']], args['resultfile'])
+        xaxis, yaxis = args['xaxis'], args['yaxis']
+
+        # Plot simple line
+        if check_unique_xaxis(df[xaxis].to_list()):
+            plot_simple_line(df[xaxis], df[yaxis], args['resultfile'])
+        else: # Plot error bar
+            mean = df.groupby(xaxis).mean()[yaxis]
+            std  = df.groupby(xaxis).std()[yaxis].fillna(0)
+            x    = mean.index
+            plot_errbar(x, mean, std, args['resultfile'])
     else:
         print(f'File args["outfile"] does not exist')
