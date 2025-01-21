@@ -1,0 +1,32 @@
+python train.py --dataset gaussian --k 1 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 2 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 3 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 4 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 5 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 6 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 7 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 8 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 9 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 10 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 11 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 12 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 13 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 14 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 15 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 16 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 17 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 18 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 19 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 20 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 21 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 22 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 23 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 24 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 25 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 26 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 27 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 28 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 29 --outfile results/ablation_study_values_of_k.csv
+python train.py --dataset gaussian --k 30 --outfile results/ablation_study_values_of_k.csv
+
+

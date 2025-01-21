@@ -1,0 +1,2 @@
+epochs,dataset,d_dim,hidden_dim,k,L,batch_size,num_batches,outfile,train_loss,test_loss,gen_gap
+1000,gaussian,64,128,1,2,64,1000,results/ablation_study_values_of_k.csv,0.00032990849114373957,0.004892802948949136,0.0045628944578053965

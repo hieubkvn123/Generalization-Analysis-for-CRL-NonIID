@@ -4,7 +4,9 @@ import tqdm
 import torch
 import pathlib
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+from argparse import ArgumentParser
 from dataloader.main import get_dataloader
 from dataloader.common import apply_model_to_batch, save_json_dict
 from models import get_model, logistic_loss
@@ -25,14 +27,35 @@ TRAIN_LOSS_THRESHOLD = 1e-3
 # Constants for ablation study
 DATASET_TO_INDIM = {'mnist' : 784, 'gaussian' : 128}
 
-def train(epochs, dataset='mnist', d_dim=64, hidden_dim=128, k=3, L=2, batch_size=64, num_batches=1000):
+def save_experiment_result(args, results, outfile):
+    # Create folder if not exists
+    dirname = os.path.dirname(outfile)
+    pathlib.Path(dirname).mkdir(exist_ok=True, parents=True)
+
+    # Store both configs + results
+    data = {**args, **results}
+
+    # Create dataframe
+    if os.path.exists(outfile):
+        df = pd.read_csv(outfile)
+        df.loc[-1] = data
+    else:
+        df = pd.DataFrame([data])
+
+    # Save the file
+    df.to_csv(outfile, index=False)
+    return df
+
+
+def train(args):
     # Get dataset 
-    train_dataloader, test_dataloader = get_dataloader(name=dataset, k=k, batch_size=batch_size, num_batches=num_batches)
+    train_dataloader, test_dataloader = get_dataloader(name=args['dataset'], k=args['k'], 
+            batch_size=args['batch_size'], num_batches=args['num_batches'])
     num_train_batches = len(train_dataloader)
     num_test_batches = len(test_dataloader)
     
     # Load model
-    model = get_model(in_dim=DATASET_TO_INDIM[dataset], out_dim=d_dim, hidden_dim=hidden_dim, L=L)
+    model = get_model(in_dim=DATASET_TO_INDIM[args['dataset']], out_dim=args['d_dim'], hidden_dim=args['hidden_dim'], L=args['L'])
     model = model.to(model.device)
 
     # Optimization algorithm
@@ -46,8 +69,8 @@ def train(epochs, dataset='mnist', d_dim=64, hidden_dim=128, k=3, L=2, batch_siz
 
     # Train model
     model.train()
-    for epoch in range(epochs):
-        print(f'[*] Epoch #[{epoch+1}/{epochs}]:')
+    for epoch in range(args['epochs']):
+        print(f'[*] Epoch #[{epoch+1}/{args["epochs"]}]:')
         with tqdm.tqdm(total=len(train_dataloader)) as pbar:
             total_loss = 0.0
             for i, batch in enumerate(train_dataloader):
@@ -71,7 +94,7 @@ def train(epochs, dataset='mnist', d_dim=64, hidden_dim=128, k=3, L=2, batch_siz
                 })
                 pbar.update(1)
             time.sleep(0.1)
-            final_average_train_loss = total_loss / (num_train_batches * batch_size)
+            final_average_train_loss = total_loss / (num_train_batches * args['batch_size'])
             print(f'\nAverage train loss : {final_average_train_loss:.4f}\n------\n')
 
         if final_average_train_loss <= TRAIN_LOSS_THRESHOLD:
@@ -99,11 +122,32 @@ def train(epochs, dataset='mnist', d_dim=64, hidden_dim=128, k=3, L=2, batch_siz
             })
             pbar.update(1)
         time.sleep(0.1)
-        final_average_test_loss = total_loss / (num_test_batches * batch_size)
+        final_average_test_loss = total_loss / (num_test_batches * args['batch_size'])
         print(f'Average test loss : {final_average_test_loss}')
+
+    # Save result
+    if args['outfile']:
+        results = {
+            'train_loss': final_average_train_loss,
+            'test_loss' : final_average_test_loss,
+            'gen_gap'   : final_average_test_loss - final_average_train_loss
+        }
+        save_experiment_result(args, results, args['outfile'])
+
     return final_average_train_loss, final_average_test_loss
 
 if __name__ == '__main__':
-    train(epochs=1000, dataset='gaussian', k=3)
-    train(epochs=1000, dataset='gaussian', k=20)
+    parser = ArgumentParser()
+    parser.add_argument('--epochs', type=int, required=False, default=1000, help='Number of training iterations')
+    parser.add_argument('--dataset', type=str, required=False, default='gaussian', help='The dataset to experiment on')
+    parser.add_argument('--d_dim', type=int, required=False, default=64, help='Output dimensionality')
+    parser.add_argument('--hidden_dim', type=int, required=False, default=128, help='Hidden dimensionality')
+    parser.add_argument('--k', type=int, required=False, default=3, help='Number of negative samples')
+    parser.add_argument('--L', type=int, required=False, default=2, help='Number of layers')
+    parser.add_argument('--batch_size', type=int, required=False, default=64, help='Batch size')
+    parser.add_argument('--num_batches', type=int, required=False, default=1000, help='Number of batches')
+    parser.add_argument('--outfile', type=str, required=False, default=None, help='Output file for experiment results')
+    args = vars(parser.parse_args())
+
+    train(args)
 
