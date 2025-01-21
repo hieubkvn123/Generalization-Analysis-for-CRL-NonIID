@@ -20,7 +20,7 @@ plt.rcParams['text.usetex'] = True
 # Constants for training
 MAX_EPOCHS = 1000
 BATCH_SIZE = 64
-TRAIN_LOSS_THRESHOLD = 1e-2
+TRAIN_LOSS_THRESHOLD = 1e-3
 
 # Constants for ablation study
 DATASET_TO_INDIM = {'mnist' : 784, 'gaussian' : 128}
@@ -104,4 +104,6 @@ def train(epochs, dataset='mnist', d_dim=64, hidden_dim=128, k=3, L=2, batch_siz
     return final_average_train_loss, final_average_test_loss
 
 if __name__ == '__main__':
-    train(epochs=1000, dataset='gaussian')
+    train(epochs=1000, dataset='gaussian', k=3)
+    train(epochs=1000, dataset='gaussian', k=20)
+

@@ -13,7 +13,7 @@ from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler
 DEFAULT_CLUSTER_STD = 0.1
 DEFAULT_NUM_CLASSES = 10
 DEFAULT_INPUT_DIM   = 128
-DEFAULT_CLASS_PROBS = [0.15, 0.12, 0.10, 0.08, 0.05, 0.20, 0.10, 0.07, 0.08, 0.05] 
+DEFAULT_CLASS_PROBS = [1/DEFAULT_NUM_CLASSES]*DEFAULT_NUM_CLASSES 
 
 def _init_gaussian_centers(C=DEFAULT_NUM_CLASSES, d=DEFAULT_INPUT_DIM):
     '''
