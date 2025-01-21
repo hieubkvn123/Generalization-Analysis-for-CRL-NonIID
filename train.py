@@ -1,3 +1,4 @@
+import re
 import os
 import time
 import tqdm
@@ -50,9 +51,13 @@ def save_experiment_result(args, results, outfile):
 def train(args):
     # Get dataset 
     train_dataloader, test_dataloader = get_dataloader(name=args['dataset'], k=args['k'], 
-            batch_size=args['batch_size'], num_batches=args['num_batches'])
+            batch_size=args['batch_size'], regime=args['regime'], num_batches=args['num_batches'])
     num_train_batches = len(train_dataloader)
     num_test_batches = len(test_dataloader)
+
+    # In-case I am using Gaussian dataset
+    match = re.match(r"([a-zA-Z]+)(\d+)", args['dataset'])
+    args['dataset'] = match.group(1)
     
     # Load model
     model = get_model(in_dim=DATASET_TO_INDIM[args['dataset']], out_dim=args['d_dim'], hidden_dim=args['hidden_dim'], L=args['L'])
@@ -146,6 +151,7 @@ if __name__ == '__main__':
     parser.add_argument('--L', type=int, required=False, default=2, help='Number of layers')
     parser.add_argument('--batch_size', type=int, required=False, default=64, help='Batch size')
     parser.add_argument('--num_batches', type=int, required=False, default=1000, help='Number of batches')
+    parser.add_argument('--regime', type=str, required=False, default='subsample', help='Sampling regime - all tuples or only a subset')
     parser.add_argument('--outfile', type=str, required=False, default=None, help='Output file for experiment results')
     args = vars(parser.parse_args())
 

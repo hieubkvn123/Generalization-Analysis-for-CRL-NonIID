@@ -1,5 +1,6 @@
 import torch
 import pprint
+import itertools
 import numpy as np
 
 from collections import defaultdict
@@ -26,8 +27,7 @@ def apply_model_to_batch(model, batch, device=None):
     y1, y2, y3 = model(x1), model(x2), [model(x) for x in x3]
     return y1, y2, y3
 
-# Tuple data loader definition
-class UnsupervisedDataset(Dataset):
+class UnsupervisedDatasetWrapper(object):
     def __init__(self, dataset, k, n, regime='subsample'):
         # Just to make sure
         super().__init__()
@@ -51,30 +51,27 @@ class UnsupervisedDataset(Dataset):
         else:
             self.all_tuples = self._generate_all_data_tuples()
 
+    def get_dataset(self):
+        return UnsupervisedDataset(self.dataset, self.all_tuples)
+
     # Get all possible tuples
     def _generate_all_data_tuples(self):
         # Initialize
         all_tuples = set()
 
         # For all class
-        for label in self.label_to_indices.keys():
+        for label in list(self.label_to_indices.keys()):
             positive_samples = set(self.label_to_indices[label])
-            negative_samples = set(np.concatenate([v for k, v in self.labels_to_indices.items() if k != label]))
+            negative_samples = set(np.concatenate([v for k, v in self.label_to_indices.items() if k != label]))
 
             # Get all permutations from positive and combinations from negative
             permutations_pos = set(itertools.permutations(positive_samples, 2))
             combinations_neg = set(itertools.combinations(negative_samples, self.k))
 
             # Take the cartesian product
-            cartesian = itertools.product(permutations_pos, combinations_neg)
-
-            # Flatten the product
-            cartesian = set(
-                itertools.chain.from_iterable(
-                    (perm + comb) for perm, comb in cartesian_product
-                )
-            )
-            all_tuples = all_tuples.union(cartesian)
+            cartesian = set(itertools.product(permutations_pos, combinations_neg))
+            cartesian_flatten = set([p + c for p, c in cartesian])
+            all_tuples = all_tuples.union(cartesian_flatten)
         return list(all_tuples)
 
     # Sample from the original dataset n tuples of k+2 vectors
@@ -97,6 +94,16 @@ class UnsupervisedDataset(Dataset):
             all_tuples.append(current_instance)
         return all_tuples
 
+# Tuple data loader definition
+class UnsupervisedDataset(Dataset):
+    def __init__(self, dataset, tuples): 
+        # Just to make sure
+        super().__init__()
+
+        # Store configurations
+        self.dataset = dataset
+        self.all_tuples = tuples
+        
     def __getitem__(self, index):
         # Get tuple of instance indices
         current_instance = self.all_tuples[index]

@@ -1,0 +1,3 @@
+epochs,dataset,d_dim,hidden_dim,k,L,batch_size,num_batches,outfile,train_loss,test_loss,gen_gap
+1000,gaussian,64,128,3,2,64,1000,results/test.csv,1.8124102938372745e-05,1.2446586966514588,1.2446405725485203
+1000,gaussian,64,128,3,2,64,1000,results/test.csv,8.227698793376754e-08,4.7533538708998755,4.753353788622888

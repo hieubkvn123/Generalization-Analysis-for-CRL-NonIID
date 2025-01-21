@@ -1,9 +1,10 @@
+import re
 import torch
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, SubsetRandomSampler
 
-from dataloader.common import UnsupervisedDataset
+from dataloader.common import UnsupervisedDatasetWrapper
 from dataloader.common import get_default_device
 from dataloader.gaussian import generate_gaussian_clusters
 
@@ -14,7 +15,7 @@ from collections import defaultdict
 
 # Data loader
 default_transform = transforms.Compose([transforms.ToTensor()])
-def get_dataset(name='cifar100', k=3, n=1000):
+def get_dataset(name='cifar100', k=3, n=1000, regime='subsample'):
     # Get raw dataset
     train_data, test_data = None, None
     if name == 'cifar100':
@@ -23,15 +24,18 @@ def get_dataset(name='cifar100', k=3, n=1000):
     elif name == 'mnist':
         train_data = torchvision.datasets.MNIST('./data/mnist', train=True, download=True, transform=default_transform)
         test_data  = torchvision.datasets.MNIST('./data/mnist', train=False, download=True, transform=default_transform)
-    elif name == 'gaussian':
-        train_data, test_data = generate_gaussian_clusters('./data/gaussian') 
+    elif name.startswith('gaussian'):
+        match = re.match(r"([a-zA-Z]+)(\d+)", name)
+        N = int(match.group(2))
+        train_data, test_data = generate_gaussian_clusters(N, './data/gaussian') 
 
     # Wrap them in custom dataset definition
-    train_data = UnsupervisedDataset(train_data, k=k, n=n)
-    test_data  = UnsupervisedDataset(test_data, k=k, n=n//3)
+    train_data = UnsupervisedDatasetWrapper(train_data, k, n, regime=regime).get_dataset()
+    test_data  = UnsupervisedDatasetWrapper(test_data,  k, n, regime=regime).get_dataset()
+
     return train_data, test_data
 
-def get_dataloader(name='cifar100', save_path='cache', save_loader=True, batch_size=64, num_batches=1000, sample_ratio=1.0, k=3):
+def get_dataloader(name='cifar100', save_path='cache', regime='subsample', save_loader=True, batch_size=64, num_batches=1000, sample_ratio=1.0, k=3):
     # Get loader directly if saved
     loader_dir = os.path.join(save_path, name, f'm{batch_size*num_batches}-k{k}')
     train_path = os.path.join(loader_dir, 'train.pth')
@@ -43,7 +47,7 @@ def get_dataloader(name='cifar100', save_path='cache', save_loader=True, batch_s
         return train_dataloader, test_dataloader
 
     # Get dataset
-    train_data, test_data = get_dataset(name=name, k=k, n=num_batches*batch_size)
+    train_data, test_data = get_dataset(name=name, k=k, n=num_batches*batch_size, regime=regime)
 
     # Sample fewer data samples
     train_sampler = SubsetRandomSampler(

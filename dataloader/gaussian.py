@@ -132,13 +132,13 @@ class GaussianDataset(Dataset):
         return self.X[idx], self.Y[idx]
 
 # Get Gaussian data
-def generate_gaussian_clusters(savedir):
+def generate_gaussian_clusters(N, savedir):
     # Generate raw data
-    X, Y, _ = _generate_raw_gaussian_clusters(savedir, DEFAULT_CLASS_PROBS)
+    X, Y, _ = _generate_raw_gaussian_clusters(savedir, DEFAULT_CLASS_PROBS, N=N)
     dataset = GaussianDataset(X, Y)
     
     # Split
-    train_size = int(0.8 * len(dataset))  # 80% for training
+    train_size = int(0.5 * len(dataset))  # 50% for training
     test_size = len(dataset) - train_size
     train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
     return train_dataset, test_dataset
