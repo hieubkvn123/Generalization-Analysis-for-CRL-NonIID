@@ -3,6 +3,7 @@ import json
 import pickle
 import pathlib
 import numpy as np
+from sklearn.model_selection import train_test_split
 
 import torch
 from torchvision import transforms
@@ -11,7 +12,7 @@ from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler
 
 # Some global constants 
 DEFAULT_CLUSTER_STD = 0.1
-DEFAULT_NUM_CLASSES = 10
+DEFAULT_NUM_CLASSES = 20
 DEFAULT_INPUT_DIM   = 128
 DEFAULT_CLASS_PROBS = [1/DEFAULT_NUM_CLASSES]*DEFAULT_NUM_CLASSES 
 
@@ -150,11 +151,18 @@ class GaussianDataset(Dataset):
         return self.X[idx], self.Y[idx]
 
 # Get Gaussian data
-def generate_gaussian_clusters(N, savedir):
+def generate_gaussian_clusters(N, savedir, test_ratio=0.8): # Test ratio w.r.t training dataset
+    # Get N-train and N-test
+    N_train = N 
+    N_test  = int(N * test_ratio)
+
     # Generate raw data
-    X, Y, _ = _generate_raw_gaussian_clusters(savedir, DEFAULT_CLASS_PROBS, N=N)
-    dataset = GaussianDataset(X, Y)
-    return dataset 
+    X, Y, _ = _generate_raw_gaussian_clusters(savedir, DEFAULT_CLASS_PROBS, N=N_train+N_test)
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, stratify=Y, test_size=test_ratio/(1+test_ratio))
+
+    train_dataset = GaussianDataset(X_train, Y_train)
+    test_dataset = GaussianDataset(X_test, Y_test)
+    return train_dataset, test_dataset 
 
 
 if __name__ == '__main__':

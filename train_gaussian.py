@@ -49,11 +49,10 @@ def save_experiment_result(args, results, outfile):
     df.to_csv(outfile, index=False)
     return df
 
-def get_dataloader(name='gaussian100', regime='subsample', k=3, batch_size=64, n_tuples=64000, n_test=1000, n_test_tuples=1000000, save_loader=True):
+def get_dataloader(name='gaussian100', regime='subsample', k=3, batch_size=64, n_tuples=64000, n_test=400, n_test_tuples=160000):
     # Get dataset
     N = int(re.match(r"([a-zA-Z]+)(\d+)", name).group(2))
-    train_data = generate_gaussian_clusters(N, './data/gaussian/train') 
-    test_data = generate_gaussian_clusters(n_test, './data/gaussian/test')
+    train_data, test_data = generate_gaussian_clusters(N, './data/gaussian/train') 
 
     # Wrap them in custom dataset definition
     # number of tuples to subset = num_batches * batch_size
@@ -72,12 +71,6 @@ def get_dataloader(name='gaussian100', regime='subsample', k=3, batch_size=64, n
     train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size, shuffle=False)
     test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=batch_size, shuffle=False)
 
-    # Save loader if requested
-    loader_dir = os.path.join('cache', name)
-    pathlib.Path(loader_dir).mkdir(parents=True, exist_ok=True)
-    if save_loader:
-        torch.save(train_dataloader, os.path.join(loader_dir, 'train.pth'))
-        torch.save(test_dataloader, os.path.join(loader_dir, 'test.pth'))
     return train_dataloader, test_dataloader
 
 
@@ -181,7 +174,7 @@ if __name__ == '__main__':
     parser.add_argument('--d_dim', type=int, required=False, default=64, help='Output dimensionality')
     parser.add_argument('--hidden_dim', type=int, required=False, default=128, help='Hidden dimensionality')
     parser.add_argument('--k', type=int, required=False, default=3, help='Number of negative samples')
-    parser.add_argument('--L', type=int, required=False, default=2, help='Number of layers')
+    parser.add_argument('--L', type=int, required=False, default=1, help='Number of layers')
     parser.add_argument('--batch_size', type=int, required=False, default=64, help='Batch size')
     parser.add_argument('--num_tuples', type=int, required=False, default=64000, help='Number of batches')
     parser.add_argument('--regime', type=str, required=False, default='subsample', help='Sampling regime - all tuples or only a subset')
