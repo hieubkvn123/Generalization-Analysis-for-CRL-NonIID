@@ -15,17 +15,34 @@ DEFAULT_NUM_CLASSES = 10
 DEFAULT_INPUT_DIM   = 128
 DEFAULT_CLASS_PROBS = [1/DEFAULT_NUM_CLASSES]*DEFAULT_NUM_CLASSES 
 
-def _init_gaussian_centers(C=DEFAULT_NUM_CLASSES, d=DEFAULT_INPUT_DIM):
+def _init_gaussian_centers(savedir, C=DEFAULT_NUM_CLASSES, d=DEFAULT_INPUT_DIM):
     '''
-    @C: The number of Gaussian centers (classes) to initialize.
-    @d: The dimensionality of the Gaussian centers.
+    @savedir: Directory to save gaussian centers.
+    @C      : The number of Gaussian centers (classes) to initialize.
+    @d      : The dimensionality of the Gaussian centers.
     '''
+    # Create directory in case it's not created yet
+    pathlib.Path(savedir).mkdir(parents=True, exist_ok=True)
+    savefile = os.path.join(savedir, f'C{C}_d{d}.pkl')
+
+    # Check if savefile exists
+    if os.path.exists(savefile):
+        print(f'Loading saved gaussian centers from {savefile}')
+        return pickle.load(open(savefile, 'rb'))
+
     centers = []
     for c in range(C):
         vec = np.random.randint(low=1, high=100, size=(d,))
         vec = vec / np.linalg.norm(vec, ord=2)
         centers.append(vec)
-    return np.array(centers)
+    centers = np.array(centers)
+
+    # Save the pickle file
+    with open(savefile, 'wb') as f:
+        print(f'Saving gaussian centers to {savefile}')
+        pickle.dump(centers, f)
+
+    return centers 
 
 def _save_data(X, Y, configs, savedir):
     '''
@@ -86,19 +103,20 @@ def _generate_raw_gaussian_clusters(savedir, class_probs=None, C=DEFAULT_NUM_CLA
 
     # Assemble configurations
     configs = {'N' : N, 'C' : C, 'd' : d, 'probs' : class_probs}
-    savedir = os.path.join(savedir, f'C{C}_d{d}_N{int(N)}')
-    pathlib.Path(savedir).mkdir(parents=True, exist_ok=True)
+    savedir_data = os.path.join(savedir, f'C{C}_d{d}_N{int(N)}')
+    pathlib.Path(savedir_data).mkdir(parents=True, exist_ok=True)
 
     # Check if need to reinit
     if not reinit:
-        if _data_exists(savedir):
-            if _configuration_matches(savedir, configs):
+        if _data_exists(savedir_data):
+            if _configuration_matches(savedir_data, configs):
                 print('Data exists and configurations matches, reloading...')
-                return _load_data(savedir)
+                return _load_data(savedir_data)
     print('Data does not exist or configurations mismatches, re-creating data...')
 
     # Generate Gaussian centers
-    centers = _init_gaussian_centers(C=C, d=d)
+    savedir_center = os.path.join(savedir, 'gaussian_centers')
+    centers = _init_gaussian_centers(savedir_center, C=C, d=d)
     sample_sizes = np.random.multinomial(N, class_probs, size=1)[0]
 
     # Generate samples
@@ -114,7 +132,7 @@ def _generate_raw_gaussian_clusters(savedir, class_probs=None, C=DEFAULT_NUM_CLA
     X = X.astype(np.float32)
 
     # Save raw data
-    _save_data(X, Y, configs, savedir)
+    _save_data(X, Y, configs, savedir_data)
     return X, Y, configs
 
 # Define the dataset and the dataloader
