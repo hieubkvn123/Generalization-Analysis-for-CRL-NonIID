@@ -8,9 +8,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
-from dataloader.main import get_dataloader
-from dataloader.common import apply_model_to_batch, save_json_dict
 from models import get_model, logistic_loss
+from torch.utils.data import DataLoader, SubsetRandomSampler
+from dataloader.common import UnsupervisedDatasetWrapper 
+from dataloader.common import apply_model_to_batch, save_json_dict
+from dataloader.gaussian import generate_gaussian_clusters
 
 # Visualization configs
 fontconfig = {
@@ -47,11 +49,42 @@ def save_experiment_result(args, results, outfile):
     df.to_csv(outfile, index=False)
     return df
 
+def get_dataloader(name='gaussian100', regime='subsample', k=3, batch_size=64, n_tuples=64000, n_test=1000, n_test_tuples=1000000, save_loader=True):
+    # Get dataset
+    N = int(re.match(r"([a-zA-Z]+)(\d+)", name).group(2))
+    train_data = generate_gaussian_clusters(N, './data/gaussian/train') 
+    test_data = generate_gaussian_clusters(n_test, './data/gaussian/test')
+
+    # Wrap them in custom dataset definition
+    # number of tuples to subset = num_batches * batch_size
+    train_data = UnsupervisedDatasetWrapper(train_data, k, n_tuples, regime=regime).get_dataset()
+    test_data  = UnsupervisedDatasetWrapper(test_data, k, n_test_tuples, regime=regime).get_dataset() 
+
+    # Sample fewer data samples
+    train_sampler = SubsetRandomSampler(
+        indices=torch.arange(len(train_data))
+    )
+    test_sampler = SubsetRandomSampler(
+        indices=torch.arange(len(test_data))
+    )
+
+    # Create custom dataloaders
+    train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size, shuffle=False)
+    test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=batch_size, shuffle=False)
+
+    # Save loader if requested
+    loader_dir = os.path.join('cache', name)
+    pathlib.Path(loader_dir).mkdir(parents=True, exist_ok=True)
+    if save_loader:
+        torch.save(train_dataloader, os.path.join(loader_dir, 'train.pth'))
+        torch.save(test_dataloader, os.path.join(loader_dir, 'test.pth'))
+    return train_dataloader, test_dataloader
+
 
 def train(args):
-    # Get dataset 
+    # Get Dataloader
     train_dataloader, test_dataloader = get_dataloader(name=args['dataset'], k=args['k'], 
-            batch_size=args['batch_size'], regime=args['regime'], num_batches=args['num_batches'])
+            batch_size=args['batch_size'], regime=args['regime'], num_tuples=args['num_tuples'])
     num_train_batches = len(train_dataloader)
     num_test_batches = len(test_dataloader)
 
@@ -150,7 +183,7 @@ if __name__ == '__main__':
     parser.add_argument('--k', type=int, required=False, default=3, help='Number of negative samples')
     parser.add_argument('--L', type=int, required=False, default=2, help='Number of layers')
     parser.add_argument('--batch_size', type=int, required=False, default=64, help='Batch size')
-    parser.add_argument('--num_batches', type=int, required=False, default=1000, help='Number of batches')
+    parser.add_argument('--num_tuples', type=int, required=False, default=64000, help='Number of batches')
     parser.add_argument('--regime', type=str, required=False, default='subsample', help='Sampling regime - all tuples or only a subset')
     parser.add_argument('--outfile', type=str, required=False, default=None, help='Output file for experiment results')
     args = vars(parser.parse_args())
