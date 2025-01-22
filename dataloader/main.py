@@ -27,7 +27,7 @@ def get_dataset(name='cifar100', k=3, n=1000, regime='subsample'):
     elif name.startswith('gaussian'):
         match = re.match(r"([a-zA-Z]+)(\d+)", name)
         N = int(match.group(2))
-        train_data, test_data = generate_gaussian_clusters(N, './data/gaussian') 
+        train_data, test_data = generate_gaussian_clusters(N*2, './data/gaussian') 
 
     # Wrap them in custom dataset definition
     train_data = UnsupervisedDatasetWrapper(train_data, k, n, regime=regime).get_dataset()
