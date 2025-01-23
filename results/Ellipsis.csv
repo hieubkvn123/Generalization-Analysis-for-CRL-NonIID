@@ -1,0 +1,2 @@
+epochs,dataset,d_dim,hidden_dim,k,L,batch_size,num_tuples,regime,outfile,train_loss,test_loss,gen_gap
+1000,gaussian,64,128,42,1,64,250000,subsample,results/Ellipsis.csv,8.279210348628615e-05,3.1781140128135683,3.178031220710082
