@@ -147,7 +147,6 @@ class GaussianDataset(Dataset):
         return len(self.X)
 
     def __getitem__(self, idx):
-        # return self.transform(self.X[idx]), self.transform(self.Y[idx])
         return self.X[idx], self.Y[idx]
 
 # Get Gaussian data

@@ -73,11 +73,7 @@ def get_dataloader(name='gaussian100', regime='subsample', k=3, batch_size=64, n
 
     return train_dataloader, test_dataloader
 
-
-def train(args):
-    # Get Dataloader
-    train_dataloader, test_dataloader = get_dataloader(name=args['dataset'], k=args['k'], 
-            batch_size=args['batch_size'], regime=args['regime'], n_tuples=args['num_tuples'])
+def train(args, train_loader, test_loader):
     num_train_batches = len(train_dataloader)
     num_test_batches = len(test_dataloader)
 
@@ -181,5 +177,10 @@ if __name__ == '__main__':
     parser.add_argument('--outfile', type=str, required=False, default=None, help='Output file for experiment results')
     args = vars(parser.parse_args())
 
-    train(args)
+    # Initialize train and test loaders
+    train_dataloader, test_dataloader = get_dataloader(name=args['dataset'], k=args['k'], 
+            batch_size=args['batch_size'], regime=args['regime'], n_tuples=args['num_tuples'])
+
+    # Start training
+    train(args, train_loader, test_loader)
 
