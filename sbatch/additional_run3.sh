@@ -10,7 +10,7 @@
 #SBATCH --nodes=1                   # How many nodes required? Usually 1
 #SBATCH --cpus-per-task=4           # Number of CPU to request for the job
 #SBATCH --mem=12GB                  # How much memory does your job require?
-#SBATCH --gres=gpu:2                # Do you require GPUS? If not delete this line
+#SBATCH --gres=gpu:1                # Do you require GPUS? If not delete this line
 #SBATCH --time=02-00:00:00          # How long to run the job for? Jobs exceed this time will be terminated
                                     # Format <DD-HH:MM:SS> eg. 5 days 05-00:00:00
                                     # Format <DD-HH:MM:SS> eg. 24 hours 1-00:00:00 or 24:00:00
@@ -48,4 +48,4 @@ source ~/icml25/bin/activate
 
 # Submit your job to the cluster
 srun whichgpu
-srun --gres=gpu:2 bash/additional_experiments3.sh 
+srun --gres=gpu:1 bash/additional_experiments3.sh 
