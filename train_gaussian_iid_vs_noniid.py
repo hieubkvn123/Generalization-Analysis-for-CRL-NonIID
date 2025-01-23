@@ -26,10 +26,10 @@ plt.rcParams['text.usetex'] = True
 # Constants for training
 MAX_EPOCHS = 1000
 BATCH_SIZE = 64
-TRAIN_LOSS_THRESHOLD = 1e-4
+TRAIN_LOSS_THRESHOLD = 1e-3
 
 # Constants for ablation study
-DATASET_TO_INDIM = {'mnist' : 784, 'gaussian' : 128}
+DATASET_TO_INDIM = 128 
 
 def save_experiment_result(args, results, outfile):
     # Create folder if not exists
@@ -68,11 +68,14 @@ def get_dataloader(name='gaussian100', regime='subsample', k=3, batch_size=64, n
     test_sampler = SubsetRandomSampler(
         indices=torch.arange(len(test_data))
     )
+    train_iid_sampler = SubsetRandomSampler(
+        indices=torch.arange(len(train_data_iid))
+    )
 
     # Create custom dataloaders
     train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size, shuffle=False)
     test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=batch_size, shuffle=False)
-    train_iid_dataloader = DataLoader(train_data_iid, sampler=None, batch_size=batch_size, shuffle=False)
+    train_iid_dataloader = DataLoader(train_data_iid, sampler=train_iid_sampler, batch_size=batch_size, shuffle=False)
 
     return train_dataloader, train_iid_dataloader, test_dataloader
 
@@ -81,12 +84,8 @@ def train(args, train_dataloader, test_dataloader):
     num_train_batches = len(train_dataloader)
     num_test_batches = len(test_dataloader)
 
-    # In-case I am using Gaussian dataset
-    match = re.match(r"([a-zA-Z]+)(\d+)", args['dataset'])
-    args['dataset'] = match.group(1)
-    
     # Load model
-    model = get_model(in_dim=DATASET_TO_INDIM[args['dataset']], out_dim=args['d_dim'], hidden_dim=args['hidden_dim'], L=args['L'])
+    model = get_model(in_dim=DATASET_TO_INDIM, out_dim=args['d_dim'], hidden_dim=args['hidden_dim'], L=args['L'])
     model = model.to(model.device)
 
     # Optimization algorithm
@@ -186,13 +185,14 @@ if __name__ == '__main__':
     train_loader, train_iid_loader, test_loader = get_dataloader(name=args['dataset'], k=args['k'], 
             batch_size=args['batch_size'], regime=args['regime'], n_tuples=args['num_tuples'])
 
-    # Start training - NonIID Case
     for seed in range(1, args['seeds']+1):
         print(f'Running seed #{seed}')
-        args['setting'] = 'NonIID'
-        train(args, train_loader, test_loader)
 
         # Start training - IID Case
         args['setting'] = 'IID'
-        train(args, train_loader_iid, test_loader)
+        train(args, train_iid_loader, test_loader)
+
+        # Start training - NonIID Case
+        args['setting'] = 'NonIID'
+        train(args, train_loader, test_loader)
 

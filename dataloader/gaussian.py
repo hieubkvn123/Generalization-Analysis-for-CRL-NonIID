@@ -158,7 +158,6 @@ class GaussianDataset(Dataset):
     def __init__(self, X, Y): 
         self.X = X
         self.Y = Y
-        self.transform = transforms.ToTensor()
 
     def __len__(self):
         return len(self.X)
@@ -174,7 +173,7 @@ class IndependentTuplesGaussianDataset(Dataset):
         self.n_tuples = n_tuples
         self.k = k
 
-        print(self.centers)
+        self.transform = transforms.ToTensor()
         self.all_tuples = self._generate_independent_tuples()
 
     def _generate_independent_tuples(self):
@@ -182,11 +181,13 @@ class IndependentTuplesGaussianDataset(Dataset):
         for _ in range(self.n_tuples): 
             negatives = []
             positive_center, negative_centers = self._choose_tuple_centers()
-            anchor = np.random.normal(loc=positive_center, scale=DEFAULT_CLUSTER_STD) 
-            positive = np.random.normal(loc=positive_center, scale=DEFAULT_CLUSTER_STD)
+            anchor = np.random.normal(loc=positive_center, scale=DEFAULT_CLUSTER_STD).astype(np.float32) 
+            positive = np.random.normal(loc=positive_center, scale=DEFAULT_CLUSTER_STD).astype(np.float32)
             for i in range(self.k):
-                negative = np.random.normal(loc=negative_centers[i], scale=DEFAULT_CLUSTER_STD) 
-            all_tuples.append((anchor, positive, negatives))
+                negative = np.random.normal(loc=negative_centers[i], scale=DEFAULT_CLUSTER_STD).astype(np.float32)
+                negatives.append(negative)
+            instance = (anchor, positive, negatives)
+            all_tuples.append(instance)
         return all_tuples
 
     def _choose_tuple_centers(self):
