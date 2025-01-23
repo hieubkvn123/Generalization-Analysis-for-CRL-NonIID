@@ -59,7 +59,7 @@ def get_dataloader(name='gaussian100', regime='subsample', k=3, batch_size=64, n
     # number of tuples to subset = num_batches * batch_size
     train_data = UnsupervisedDatasetWrapper(train_data, k, n_tuples, regime=regime).get_dataset()
     test_data  = UnsupervisedDatasetWrapper(test_data, k, n_test_tuples, regime=regime).get_dataset() 
-    train_data_iid = IndependentTuplesGaussianDataset(centers, n_tuples)
+    train_data_iid = IndependentTuplesGaussianDataset(centers, N*10)
 
     # Sample fewer data samples
     train_sampler = SubsetRandomSampler(
