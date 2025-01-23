@@ -1,5 +1,6 @@
 import os
 import json
+import random
 import pickle
 import pathlib
 import numpy as np
@@ -65,8 +66,8 @@ def _load_data(savedir):
     '''
     X = pickle.load(open(os.path.join(savedir, 'X.pkl'), 'rb'))
     Y = pickle.load(open(os.path.join(savedir, 'Y.pkl'), 'rb'))
-    configs = json.load(open(os.path.join(savedir, 'configs.json'), 'r'))
-    return X, Y, configs
+
+    return X, Y
     
 def _data_exists(savedir):
     Xfile = os.path.join(savedir, 'X.pkl')
@@ -105,6 +106,7 @@ def _generate_raw_gaussian_clusters(savedir, class_probs=None, C=DEFAULT_NUM_CLA
     # Assemble configurations
     configs = {'N' : N, 'C' : C, 'd' : d, 'probs' : class_probs}
     savedir_data = os.path.join(savedir, f'C{C}_d{d}_N{int(N)}')
+    savedir_center = os.path.join(savedir, 'gaussian_centers')
     pathlib.Path(savedir_data).mkdir(parents=True, exist_ok=True)
 
     # Check if need to reinit
@@ -112,11 +114,12 @@ def _generate_raw_gaussian_clusters(savedir, class_probs=None, C=DEFAULT_NUM_CLA
         if _data_exists(savedir_data):
             if _configuration_matches(savedir_data, configs):
                 print('Data exists and configurations matches, reloading...')
-                return _load_data(savedir_data)
+                X, Y = _load_data(savedir_data)
+                centers = pickle.load(open(os.path.join(savedir_center, f'C{C}_d{d}.pkl'), 'rb')) 
+                return X, Y, centers
     print('Data does not exist or configurations mismatches, re-creating data...')
 
     # Generate Gaussian centers
-    savedir_center = os.path.join(savedir, 'gaussian_centers')
     centers = _init_gaussian_centers(savedir_center, C=C, d=d)
     sample_sizes = np.random.multinomial(N, class_probs, size=1)[0]
 
@@ -134,9 +137,23 @@ def _generate_raw_gaussian_clusters(savedir, class_probs=None, C=DEFAULT_NUM_CLA
 
     # Save raw data
     _save_data(X, Y, configs, savedir_data)
-    return X, Y, configs
+    return X, Y, centers
 
-# Define the dataset and the dataloader
+# Get Gaussian data
+def generate_gaussian_clusters(N, savedir, test_ratio=0.8): # Test ratio w.r.t training dataset
+    # Get N-train and N-test
+    N_train = N 
+    N_test  = int(N * test_ratio)
+
+    # Generate raw data
+    X, Y, centers = _generate_raw_gaussian_clusters(savedir, DEFAULT_CLASS_PROBS, N=N_train+N_test)
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, stratify=Y, test_size=test_ratio/(1+test_ratio))
+
+    train_dataset = GaussianDataset(X_train, Y_train)
+    test_dataset = GaussianDataset(X_test, Y_test)
+    return train_dataset, test_dataset, centers 
+
+# Define the labeled dataset
 class GaussianDataset(Dataset):
     def __init__(self, X, Y): 
         self.X = X
@@ -149,19 +166,44 @@ class GaussianDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.Y[idx]
 
-# Get Gaussian data
-def generate_gaussian_clusters(N, savedir, test_ratio=0.8): # Test ratio w.r.t training dataset
-    # Get N-train and N-test
-    N_train = N 
-    N_test  = int(N * test_ratio)
+# Define the set of independent tuples
+class IndependentTuplesGaussianDataset(Dataset):
+    def __init__(self, centers, n_tuples, k=3):
+        super().__init__()
+        self.centers = centers
+        self.n_tuples = n_tuples
+        self.k = k
 
-    # Generate raw data
-    X, Y, _ = _generate_raw_gaussian_clusters(savedir, DEFAULT_CLASS_PROBS, N=N_train+N_test)
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, stratify=Y, test_size=test_ratio/(1+test_ratio))
+        print(self.centers)
+        self.all_tuples = self._generate_independent_tuples()
 
-    train_dataset = GaussianDataset(X_train, Y_train)
-    test_dataset = GaussianDataset(X_test, Y_test)
-    return train_dataset, test_dataset 
+    def _generate_independent_tuples(self):
+        all_tuples = []
+        for _ in range(self.n_tuples): 
+            negatives = []
+            positive_center, negative_centers = self._choose_tuple_centers()
+            anchor = np.random.normal(loc=positive_center, scale=DEFAULT_CLUSTER_STD) 
+            positive = np.random.normal(loc=positive_center, scale=DEFAULT_CLUSTER_STD)
+            for i in range(self.k):
+                negative = np.random.normal(loc=negative_centers[i], scale=DEFAULT_CLUSTER_STD) 
+            all_tuples.append((anchor, positive, negatives))
+        return all_tuples
+
+    def _choose_tuple_centers(self):
+        # Step 1: Randomly select one vector from the list
+        positive_center = random.choice(self.centers)
+
+        # Step 2: Randomly choose k vectors from the remaining n-1 vectors with replacement
+        remaining_centers = [v for v in self.centers if not np.array_equal(v, positive_center)]
+        negative_centers = random.choices(remaining_centers, k=self.k)
+        
+        return positive_center, negative_centers 
+
+    def __getitem__(self, index):
+        return self.all_tuples[index]
+
+    def __len__(self):
+        return len(self.all_tuples)
 
 
 if __name__ == '__main__':
