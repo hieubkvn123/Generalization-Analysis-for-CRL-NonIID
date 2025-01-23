@@ -25,7 +25,7 @@ plt.rcParams['text.usetex'] = True
 # Constants for training
 MAX_EPOCHS = 1000
 BATCH_SIZE = 64
-TRAIN_LOSS_THRESHOLD = 1e-3
+TRAIN_LOSS_THRESHOLD = 1e-4
 
 # Constants for ablation study
 DATASET_TO_INDIM = {'mnist' : 784, 'gaussian' : 128}
