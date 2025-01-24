@@ -15,11 +15,24 @@ def plot_result1(output, figsize=(12, 7)):
     df = pd.read_csv(RESULT_FILE1)
     df['N'] = np.sqrt(df['num_tuples']).astype(int)
 
+    # Split dataset
+    df_iid = df[df['setting'] == 'IID']
+    df_niid = df[df['setting'] == 'NonIID']
+
     # Initialize figure
     fig, ax = plt.subplots(figsize=figsize)
-    for N in np.unique(df['N']):
-        tmp = df[df['N'] == N]
-        ax.plot(tmp['k'], tmp['gen_gap'], linestyle='-.', marker='o', label=f'$N=${N}')
+
+    # Plot the IID case
+    mean  = df_iid.groupby('k').mean()['gen_gap']
+    std   = df_iid.groupby('k').std()['gen_gap']
+    xaxis = mean.index
+    ax.errorbar(xaxis, mean, std, linestyle='-.', marker='o', label=f'IID setting')
+
+    # Plot the Non-IID case
+    mean  = df_niid.groupby('k').mean()['gen_gap']
+    std   = df_niid.groupby('k').std()['gen_gap']
+    xaxis = mean.index
+    ax.errorbar(xaxis, mean, std, linestyle='-.', marker='o', label=f'Non-IID setting')
 
     # Axes labels
     ax.set_xlabel('Number of negative samples ($k$)')
