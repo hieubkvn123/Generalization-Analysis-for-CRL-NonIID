@@ -1,14 +1,14 @@
 #!/bin/bash
-python3 train_gaussian.py --dataset gaussian700 --k 42 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
-python3 train_gaussian.py --dataset gaussian700 --k 44 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
-python3 train_gaussian.py --dataset gaussian700 --k 46 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
-python3 train_gaussian.py --dataset gaussian700 --k 48 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
-python3 train_gaussian.py --dataset gaussian700 --k 50 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
-python3 train_gaussian.py --dataset gaussian700 --k 52 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
-python3 train_gaussian.py --dataset gaussian700 --k 54 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
-python3 train_gaussian.py --dataset gaussian700 --k 56 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
-python3 train_gaussian.py --dataset gaussian700 --k 58 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
-python3 train_gaussian.py --dataset gaussian700 --k 60 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
+#python3 train_gaussian.py --dataset gaussian700 --k 42 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
+#python3 train_gaussian.py --dataset gaussian700 --k 44 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
+#python3 train_gaussian.py --dataset gaussian700 --k 46 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
+#python3 train_gaussian.py --dataset gaussian700 --k 48 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
+#python3 train_gaussian.py --dataset gaussian700 --k 50 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
+#python3 train_gaussian.py --dataset gaussian700 --k 52 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
+#python3 train_gaussian.py --dataset gaussian700 --k 54 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
+#python3 train_gaussian.py --dataset gaussian700 --k 56 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
+#python3 train_gaussian.py --dataset gaussian700 --k 58 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
+#python3 train_gaussian.py --dataset gaussian700 --k 60 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
 python3 train_gaussian.py --dataset gaussian700 --k 62 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
 python3 train_gaussian.py --dataset gaussian700 --k 64 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000
 python3 train_gaussian.py --dataset gaussian700 --k 66 --outfile results/Ellipsis.csv --batch_size 64 --num_tuples 490000

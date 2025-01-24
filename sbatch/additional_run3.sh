@@ -23,9 +23,9 @@
 ## EDIT AFTER THIS LINE IF YOU ARE OKAY WITH DEFAULT SETTINGS ##
 ################################################################
 
-#SBATCH --partition=antoineresearch               # The partition you've been assigned
+#SBATCH --partition=researchlong                  # The partition you've been assigned
 #SBATCH --account=antoineledentresearch           # The account you've been assigned (normally student)
-#SBATCH --qos=antoineresearch-priority            # What is the QOS assigned to you? Check with myinfo command
+#SBATCH --qos=research-1-qos                      # What is the QOS assigned to you? Check with myinfo command
 #SBATCH --mail-user=mh.nong.2024@phdcs.smu.edu.sg # Who should receive the email notifications
 #SBATCH --job-name=icml25                         # Give the job a name
 
