@@ -1,3 +1,7 @@
 epochs,N,d_dim,k,C,L,hidden_dim,batch_size,regime,outfile,target,eps,dataset,train_loss,test_loss,gen_gap,Nmin
-1000,500,64,5,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.0063052785699255,0.5519941370844841,0.5456888585145585,59
-1000,500,64,10,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.006850945530459285,0.5503749041378498,0.5435239586073906,119
+1000,500,64,5,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.0063052785699255,0.5519941370844841,0.5456888585145585,29
+1000,500,64,10,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.0068509455304592,0.5503749041378498,0.5435239586073906,59
+1000,500,64,15,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.0043083670648879,0.5522803327262401,0.5479719656613522,89
+1000,500,64,20,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.0047145794994909,0.5016208732962608,0.4969062937967698,104
+1000,500,64,25,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.0042305367058265,0.5393350555717945,0.535104518865968,118
+1000,500,64,30,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.0045180919859558345,0.5239592900454998,0.5194411980595439,156
