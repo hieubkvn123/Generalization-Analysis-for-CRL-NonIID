@@ -171,7 +171,7 @@ if __name__ == '__main__':
 
     # Initialize range of N
     result = 0
-    Nmin, Nmax = 4*args['C'], 1024*args['C']
+    Nmin, Nmax = 4*args['k'], 1024*args['k']
     gen_gap = 1.0
 
     # Initialize train and test loaders

@@ -12,23 +12,30 @@ def plot_result1(output, figsize=(12, 7)):
         print(f'File {RESULT_FILE1} does not exist...')
         return
 
-    # Read the data file
-    df = pd.read_csv(RESULT_FILE1)
-    df['N'] = np.sqrt(df['num_tuples']).astype(int)
-
     # Initialize figure
-    fig, ax = plt.subplots(figsize=figsize)
-    for N in np.unique(df['N']):
-        tmp = df[df['N'] == N]
-        ax.plot(tmp['k'], tmp['gen_gap'], linestyle='-.', marker='o', label=f'$N=${N}')
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
 
-    # Axes labels
-    ax.set_xlabel('Number of negative samples ($k$)')
-    ax.set_ylabel("Generalization gap")
+    # Plot result 1
+    ## Read the data file
+    df = pd.read_csv(RESULT_FILE1)
+    axes[0].plot(df['k'], df['Nmin'], linestyle='-.', marker='o')
+
+    ## Axes labels
+    axes[0].set_xlabel('Number of negative samples ($k$)')
+    axes[0].set_ylabel('Minimum number of samples required to reach target generalization gap ($0.5$)')
+    axes[0].grid()
+
+    # Plot result 2
+    ## Read the data file
+    df = pd.read_csv(RESULT_FILE2)
+    axes[1].plot(df['C'], df['Nmin'], linestyle='-.', marker='o')
+
+    ## Axes labels
+    axes[1].set_xlabel('Number of classes ($|\mathcal{C}|$)')
+    axes[1].grid()
 
     # Plot 
     plt.legend()
-    plt.grid()
     plt.tight_layout()
     plt.savefig(output)
     print(f'Output saved to {output}.')
