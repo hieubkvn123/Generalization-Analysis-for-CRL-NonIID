@@ -25,10 +25,11 @@ plt.rcParams['text.usetex'] = True
 # Constants for training
 MAX_EPOCHS = 1000
 BATCH_SIZE = 64
-TRAIN_LOSS_THRESHOLD = 1e-4
+TRAIN_LOSS_THRESHOLD = 1e-2
+DATA_DIR = 'data'
 
 # Constants for ablation study
-DATASET_TO_INDIM = {'mnist' : 784, 'gaussian' : 128}
+INPUT_DIM = 128
 
 def save_experiment_result(args, results, outfile):
     # Create folder if not exists
@@ -49,13 +50,12 @@ def save_experiment_result(args, results, outfile):
     df.to_csv(outfile, index=False)
     return df
 
-def get_dataloader(name='gaussian100', regime='subsample', k=3, batch_size=64, n_tuples=64000, n_test=400, n_test_tuples=160000):
-    # Get dataset
-    N = int(re.match(r"([a-zA-Z]+)(\d+)", name).group(2))
-    train_data, test_data = generate_gaussian_clusters(N, './data/gaussian/train') 
+def get_dataloader(regime='subsample', k=3, C=20, N=500, batch_size=64, n_tuples=64000, n_test=400, n_test_tuples=160000):
+    # Get train + test datasets
+    savedir = os.path.join(DATA_DIR, 'train', f'C{C}_d{INPUT_DIM}_N{N}')
+    train_data, test_data = generate_gaussian_clusters(N, C, savedir=savedir)
 
-    # Wrap them in custom dataset definition
-    # number of tuples to subset = num_batches * batch_size
+    # Number of tuples to subset = num_batches * batch_size
     train_data = UnsupervisedDatasetWrapper(train_data, k, n_tuples, regime=regime).get_dataset()
     test_data  = UnsupervisedDatasetWrapper(test_data, k, n_test_tuples, regime=regime).get_dataset() 
 
@@ -78,11 +78,10 @@ def train(args, train_dataloader, test_dataloader):
     num_test_batches = len(test_dataloader)
 
     # In-case I am using Gaussian dataset
-    match = re.match(r"([a-zA-Z]+)(\d+)", args['dataset'])
-    args['dataset'] = match.group(1)
+    args['dataset'] = 'gaussian' 
     
     # Load model
-    model = get_model(in_dim=DATASET_TO_INDIM[args['dataset']], out_dim=args['d_dim'], hidden_dim=args['hidden_dim'], L=args['L'])
+    model = get_model(in_dim=INPUT_DIM, out_dim=args['d_dim'], hidden_dim=args['hidden_dim'], L=args['L'])
     model = model.to(model.device)
 
     # Optimization algorithm
@@ -152,35 +151,65 @@ def train(args, train_dataloader, test_dataloader):
         final_average_test_loss = total_loss / (num_test_batches * args['batch_size'])
         print(f'Average test loss : {final_average_test_loss}')
 
-    # Save result
-    if args['outfile']:
-        results = {
-            'train_loss': final_average_train_loss,
-            'test_loss' : final_average_test_loss,
-            'gen_gap'   : final_average_test_loss - final_average_train_loss
-        }
-        save_experiment_result(args, results, args['outfile'])
-
     return final_average_train_loss, final_average_test_loss
 
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--epochs', type=int, required=False, default=1000, help='Number of training iterations')
-    parser.add_argument('--dataset', type=str, required=False, default='gaussian', help='The dataset to experiment on')
+    parser.add_argument('--N', type=int, required=False, default=500, help='Number of labeled data points')
     parser.add_argument('--d_dim', type=int, required=False, default=64, help='Output dimensionality')
-    parser.add_argument('--hidden_dim', type=int, required=False, default=128, help='Hidden dimensionality')
     parser.add_argument('--k', type=int, required=False, default=3, help='Number of negative samples')
+    parser.add_argument('--C', type=int, required=False, default=20, help='Number of classes') 
     parser.add_argument('--L', type=int, required=False, default=1, help='Number of layers')
+    parser.add_argument('--hidden_dim', type=int, required=False, default=128, help='Hidden dimensionality')
     parser.add_argument('--batch_size', type=int, required=False, default=64, help='Batch size')
-    parser.add_argument('--num_tuples', type=int, required=False, default=64000, help='Number of batches')
     parser.add_argument('--regime', type=str, required=False, default='subsample', help='Sampling regime - all tuples or only a subset')
     parser.add_argument('--outfile', type=str, required=False, default=None, help='Output file for experiment results')
+    parser.add_argument('--target', type=float, required=False, default=0.5, help='Target generalization gap')
+    parser.add_argument('--eps', type=float, required=False, default=0.05, help='Target distance away from target gap')
     args = vars(parser.parse_args())
 
-    # Initialize train and test loaders
-    train_loader, test_loader = get_dataloader(name=args['dataset'], k=args['k'], 
-            batch_size=args['batch_size'], regime=args['regime'], n_tuples=args['num_tuples'])
+    # Initialize range of N
+    result = 0
+    Nmin, Nmax = 4*args['C'], 1024*args['C']
+    gen_gap = 1.0
 
-    # Start training
-    train(args, train_loader, test_loader)
+    # Initialize train and test loaders
+    while abs(gen_gap - args['target']) > args['eps']: 
+        # Update value of N
+        N = (Nmin + Nmax) // 2
+
+        # Prepare data loaders & train
+        print(f'Current value of N={N}')
+        train_loader, test_loader = get_dataloader(k=args['k'], C=args['C'], N=N,
+                batch_size=args['batch_size'], regime=args['regime'], n_tuples=N*10)
+        train_loss, test_loss = train(args, train_loader, test_loader)
+
+        # Update generalization gap
+        gen_gap = test_loss - train_loss
+
+        # Update search window
+        if gen_gap - args['target'] <= args['eps']:
+            if abs(gen_gap - args['target']) > args['eps']: # Went overboard
+                print('Generalization gap went too low, adjusting upper range')
+                Nmax = N 
+            else:
+                result = N
+        else:
+            print('Generalization gap went too high, adjusting lower range')            
+            Nmin = N  
+    print(f'Minimum number of samples required: {N}')
+
+    # Save result
+    if args['outfile']:
+        results = {
+            'train_loss': train_loss, 
+            'test_loss' : test_loss,
+            'gen_gap'   : gen_gap,
+            'Nmin'      : N
+        }
+        save_experiment_result(args, results, args['outfile'])
+        print(f'Experiment result saved to {args["outfile"]}')
+
+
 

@@ -150,13 +150,13 @@ class GaussianDataset(Dataset):
         return self.X[idx], self.Y[idx]
 
 # Get Gaussian data
-def generate_gaussian_clusters(N, savedir, test_ratio=0.8): # Test ratio w.r.t training dataset
+def generate_gaussian_clusters(N, C, savedir, test_ratio=0.8): # Test ratio w.r.t training dataset
     # Get N-train and N-test
     N_train = N 
     N_test  = int(N * test_ratio)
 
     # Generate raw data
-    X, Y, _ = _generate_raw_gaussian_clusters(savedir, DEFAULT_CLASS_PROBS, N=N_train+N_test)
+    X, Y, _ = _generate_raw_gaussian_clusters(savedir, class_probs=[1/C]*C, C=C, N=N_train+N_test)
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, stratify=Y, test_size=test_ratio/(1+test_ratio))
 
     train_dataset = GaussianDataset(X_train, Y_train)
