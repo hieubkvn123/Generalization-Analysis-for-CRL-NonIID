@@ -4,10 +4,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-RESULT_FILE1 = 'results/ablation_study_values_of_k.csv'
+RESULT_FILE1 = 'results/ablation_study_values_of_k_small_C.csv'
+RESULT_FILE2 = 'results/ablation_study_values_of_C_small_k.csv'
 
 def plot_result1(output, figsize=(12, 7)):
-    if not os.path.exists(RESULT_FILE1):
+    if not os.path.exists(RESULT_FILE1) or not os.path.exists(RESULT_FILE2):
         print(f'File {RESULT_FILE1} does not exist...')
         return
 
