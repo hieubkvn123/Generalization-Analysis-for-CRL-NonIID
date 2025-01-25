@@ -181,6 +181,7 @@ if __name__ == '__main__':
 
         # Prepare data loaders & train
         print(f'Current value of N={N}')
+        print(f'Values of k={args["k"]}, C={args["C"]}')
         train_loader, test_loader = get_dataloader(k=args['k'], C=args['C'], N=N,
                 batch_size=args['batch_size'], regime=args['regime'], n_tuples=N*10)
         train_loss, test_loss = train(args, train_loader, test_loader)
