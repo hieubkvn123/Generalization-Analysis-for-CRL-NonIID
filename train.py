@@ -135,6 +135,9 @@ def train(args):
         }
         save_experiment_result(args, results, args['outfile'])
 
+    # Save the model
+    torch.save(model.state_dict(), f'weights/model_M{args["M"]}_{args["regime"]}.pth')
+
     return final_average_train_loss, final_average_test_loss
 
 if __name__ == '__main__':
