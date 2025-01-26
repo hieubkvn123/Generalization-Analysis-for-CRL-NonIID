@@ -1,4 +1,5 @@
 import torch
+import random
 import pprint
 import itertools
 import numpy as np
@@ -31,23 +32,25 @@ class UnsupervisedDatasetWrapper(object):
     def __init__(self, dataset, k, n, regime='subsample'):
         # Just to make sure
         super().__init__()
-        assert regime in ['subsample', 'all'], f'Invalid regime {regime}'
+        assert regime in ['subsample', 'independent', 'all'], f'Invalid regime {regime}'
 
         # Store configurations
         self.k = k
         self.n = n
+        self.regime = regime
         self.dataset = dataset
         
         # Map labels to instance indices
         self.label_to_indices = defaultdict(list)
         for idx, (_, label) in enumerate(self.dataset):
             self.label_to_indices[label].append(idx)
-        self.label_to_indices = {label: np.array(indices) for label, indices in self.label_to_indices.items()}
 
         # Get contrastive tuples
         self.all_labels = list(self.label_to_indices.keys())
         if regime == 'subsample':
-            self.all_tuples = self._subsample_data_tuples(n)
+            self.all_tuples = self._subsample_data_tuples()
+        elif regime == 'independent':
+            self.all_tuples = self._subsample_data_tuples_independently()
         else:
             self.all_tuples = self._generate_all_data_tuples()
 
@@ -74,10 +77,39 @@ class UnsupervisedDatasetWrapper(object):
             all_tuples = all_tuples.union(cartesian_flatten)
         return list(all_tuples)
 
-    # Sample from the original dataset n tuples of k+2 vectors
-    def _subsample_data_tuples(self, n):
+    # Sample n independent tuples
+    def _subsample_data_tuples_independently(self):
         all_tuples = []
-        for _ in range(n):
+        used_indices = set()
+        all_indices = set(list(range(0, len(self.dataset))))
+        for j in range(self.n):
+            # Get a random index from original dataset
+            index = random.choice(list(all_indices.difference(used_indices)))
+            _, label = self.dataset[index]
+            used_indices.add(index)
+
+            # Get positive index
+            positive_index = random.choice(list(
+                set(self.label_to_indices[label]).difference(used_indices)
+            ))
+            used_indices.add(positive_index)
+            current_instance = [index, positive_index]
+
+            # Get negative indices
+            negative_labels = np.random.choice([l for l in self.all_labels if l != label], self.k, replace=True)
+            for neg_label in negative_labels:
+                negative_index = random.choice(list(
+                    set(self.label_to_indices[neg_label]).difference(used_indices)
+                ))
+                current_instance.append(negative_index)
+                used_indices.add(negative_index)
+            all_tuples.append(current_instance)
+        return all_tuples
+
+    # Sample from the original dataset n tuples of k+2 vectors
+    def _subsample_data_tuples(self):
+        all_tuples = []
+        for j in range(self.n):
             # Get a random index from original dataset
             index = np.random.randint(0, len(self.dataset))
             _, label = self.dataset[index]
@@ -91,6 +123,7 @@ class UnsupervisedDatasetWrapper(object):
             for neg_label in negative_labels:
                 negative_index = np.random.choice(self.label_to_indices[neg_label])
                 current_instance.append(negative_index)
+
             all_tuples.append(current_instance)
         return all_tuples
 

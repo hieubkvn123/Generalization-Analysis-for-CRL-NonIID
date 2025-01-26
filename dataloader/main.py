@@ -13,6 +13,9 @@ import pathlib
 import numpy as np
 from collections import defaultdict
 
+# Constants
+N_TEST_TUPLES = 5000
+
 # Data loader
 default_transform = transforms.Compose([transforms.ToTensor()])
 def get_dataset(name='cifar100', k=3, n=1000, regime='subsample'):
@@ -31,13 +34,13 @@ def get_dataset(name='cifar100', k=3, n=1000, regime='subsample'):
 
     # Wrap them in custom dataset definition
     train_data = UnsupervisedDatasetWrapper(train_data, k, n, regime=regime).get_dataset()
-    test_data  = UnsupervisedDatasetWrapper(test_data,  k, n, regime=regime).get_dataset()
+    test_data  = UnsupervisedDatasetWrapper(test_data,  k, N_TEST_TUPLES, regime='subsample').get_dataset()
 
     return train_data, test_data
 
 def get_dataloader(name='cifar100', save_path='cache', regime='subsample', save_loader=True, batch_size=64, num_batches=1000, sample_ratio=1.0, k=3):
     # Get loader directly if saved
-    loader_dir = os.path.join(save_path, name, f'm{batch_size*num_batches}-k{k}')
+    loader_dir = os.path.join(save_path, name, f'm{batch_size*num_batches}-k{k}-{regime}')
     train_path = os.path.join(loader_dir, 'train.pth')
     test_path  = os.path.join(loader_dir, 'test.pth')
     if os.path.exists(train_path) and os.path.exists(test_path):
@@ -48,6 +51,7 @@ def get_dataloader(name='cifar100', save_path='cache', regime='subsample', save_
 
     # Get dataset
     train_data, test_data = get_dataset(name=name, k=k, n=num_batches*batch_size, regime=regime)
+    print('Data length: ', len(train_data))
 
     # Sample fewer data samples
     train_sampler = SubsetRandomSampler(
