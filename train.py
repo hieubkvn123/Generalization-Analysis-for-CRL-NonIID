@@ -25,7 +25,7 @@ BATCH_SIZE = 64
 TRAIN_LOSS_THRESHOLD = 1e-3
 
 # Constants for ablation study
-DATASET_TO_INDIM = {'mnist' : 784, 'gaussian' : 128}
+DATASET_TO_INDIM = {'mnist' : 784, 'cifar100': 3072, 'gaussian' : 128}
 
 def save_experiment_result(args, results, outfile):
     # Create folder if not exists
