@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-RESULT_FILE1 = 'results/ablation_study_iid_vs_niid_mnist_old.csv'
+RESULT_FILE1 = 'results/ablation_study_iid_vs_noniid_mnist_old.csv'
 
 def plot_result1(output, figsize=(12, 7)):
     if not os.path.exists(RESULT_FILE1):
@@ -13,16 +13,18 @@ def plot_result1(output, figsize=(12, 7)):
 
     # Read the data file
     df = pd.read_csv(RESULT_FILE1)
-    df['N'] = np.sqrt(df['num_tuples']).astype(int)
+    tmp = df[df['regime'] == 'subsample']
+    baseline = df[df['regime'] == 'independent']['gen_gap']
 
-    # Initialize figure
+    # Initialize plot
     fig, ax = plt.subplots(figsize=figsize)
-    for N in np.unique(df['N']):
-        tmp = df[df['N'] == N]
-        ax.plot(tmp['k'], tmp['gen_gap'], linestyle='-.', marker='o', label=f'$N=${N}')
+
+    # Plot the baseline
+    ax.hlines(y=baseline, xmin=min(tmp['M']), xmax=max(df['M']), linestyle='-.', color='r', label='Baseline ($i.i.d.$ case)')
 
     # Axes labels
-    ax.set_xlabel('Number of negative samples ($k$)')
+    ax.plot(tmp['M'], tmp['gen_gap'], label='Non-$i.i.d.$ case')
+    ax.set_xlabel('Number of tuples used for training ($\mathrm{M}$)')
     ax.set_ylabel("Generalization gap")
 
     # Plot 
