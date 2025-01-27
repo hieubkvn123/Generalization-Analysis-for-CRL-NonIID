@@ -21,15 +21,11 @@ fontconfig = {
 plt.style.use('seaborn-v0_8-paper')
 plt.rcParams['text.usetex'] = True
 
-# Constants for training
-MAX_EPOCHS = 1000
-BATCH_SIZE = 64
-TRAIN_LOSS_THRESHOLD = 1
-
 # Constants for ablation study
 DATASET_TO_INDIM = {'mnist' : 784, 'cifar100': 3072, 'gaussian' : 128}
 DATASET_TO_NUMCLS = {'mnist': 10, 'cifar100': 100}
 
+# Saving experiment results
 def save_experiment_result(args, results, outfile):
     # Create folder if not exists
     dirname = os.path.dirname(outfile)
@@ -203,7 +199,7 @@ def train(args):
             final_average_train_loss = total_loss / (num_train_batches * args['batch_size'])
             print(f'\nAverage train loss : {final_average_train_loss:.4f}\n------\n')
 
-        if final_average_train_loss <= TRAIN_LOSS_THRESHOLD:
+        if final_average_train_loss <= args['train_loss_thresh']:
             print('[INFO] Train loss target reached, early stopping...')
             break
 
@@ -264,10 +260,15 @@ if __name__ == '__main__':
     parser.add_argument('--k', type=int, required=False, default=3, help='Number of negative samples')
     parser.add_argument('--L', type=int, required=False, default=2, help='Number of layers')
     parser.add_argument('--M', type=int, required=False, default=10000, help='Number of tuples to sub-sample')
+    parser.add_argument('--num_seeds', type=int, required=False, default=5, help='Number of experiments to repeat')
     parser.add_argument('--batch_size', type=int, required=False, default=64, help='Batch size')
     parser.add_argument('--regime', type=str, required=False, default='subsample', help='Sampling regime - all tuples or only a subset')
+    parser.add_argument('--train_loss_thresh', type=float, required=False, default=0.01, help='Target training loss to reach before calculating generalization gap')
     parser.add_argument('--outfile', type=str, required=False, default=None, help='Output file for experiment results')
     args = vars(parser.parse_args())
 
-    train(args)
+    for j in range(args['num_seeds']):
+        print(f'[INFO] Training seed #{j+1}')
+        args['seed'] = j + 1
+        train(args)
 
