@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-RESULT_FILE1 = 'results/ablation_study_values_of_k.csv'
+RESULT_FILE1 = 'results/ablation_study_iid_vs_niid_mnist_old.csv'
 
 def plot_result1(output, figsize=(12, 7)):
     if not os.path.exists(RESULT_FILE1):

@@ -162,7 +162,7 @@ def train(args):
     # Optimization algorithm
     optimizer = torch.optim.Adam(
         model.parameters(), 
-        lr=0.0009, 
+        lr=args['lr'], 
         amsgrad=True)
 
     # To be stored as final result
@@ -262,6 +262,7 @@ if __name__ == '__main__':
     parser.add_argument('--M', type=int, required=False, default=10000, help='Number of tuples to sub-sample')
     parser.add_argument('--num_seeds', type=int, required=False, default=5, help='Number of experiments to repeat')
     parser.add_argument('--batch_size', type=int, required=False, default=64, help='Batch size')
+    parser.add_argument('--lr', type=float, required=False, default=0.0009, help='learning rate')
     parser.add_argument('--regime', type=str, required=False, default='subsample', help='Sampling regime - all tuples or only a subset')
     parser.add_argument('--train_loss_thresh', type=float, required=False, default=0.01, help='Target training loss to reach before calculating generalization gap')
     parser.add_argument('--outfile', type=str, required=False, default=None, help='Output file for experiment results')
