@@ -1,0 +1,2 @@
+epochs,dataset,d_dim,hidden_dim,k,L,M,batch_size,regime,outfile,train_loss,test_loss,gen_gap
+1000,cifar100,64,128,3,2,500,10,subsample,results/ablation_study_iid_vs_noniid2.csv,0.0009985856029088608,inf,inf
