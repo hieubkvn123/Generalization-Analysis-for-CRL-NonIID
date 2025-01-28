@@ -49,16 +49,16 @@ def plot_result1(output, figsize=(12, 7)):
     axes[1] = plot_errbar(axes[1], df, baseline, metric='test_acc')
     axes[1].set_xlabel('Number of tuples used for training ($\mathrm{M}$)')
     axes[1].set_ylabel("Classifier Accuracy")
-    axes[1].legend()
-    axes[1].grid()    
 
     # Plot the range for cls without CRL
     mean_acc = df_cls['val_acc'].mean()
     std_acc = df_cls['val_acc'].std()
     CI95 = 1.96 * std_acc / np.sqrt(len(df_cls))
-    axes[1].axhline(y=mean_acc, color='tab:orange', linestyle='-.', label='Baseline (without CRL)')
+    axes[1].axhline(y=mean_acc, color='tab:orange', label='Baseline (without CRL)')
     axes[1].axhline(y=mean_acc - CI95, color='tab:orange', linestyle='-.', label='Baseline CI95 (without CRL)')
     axes[1].axhline(y=mean_acc + CI95, color='tab:orange', linestyle='-.')
+    axes[1].legend()
+    axes[1].grid()    
 
     # Plot 
     plt.tight_layout()
