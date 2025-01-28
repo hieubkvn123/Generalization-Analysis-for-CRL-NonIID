@@ -253,7 +253,7 @@ def train(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--epochs', type=int, required=False, default=1000, help='Number of training iterations')
+    parser.add_argument('--epochs', type=int, required=False, default=300, help='Number of training iterations')
     parser.add_argument('--dataset', type=str, required=False, default='gaussian', help='The dataset to experiment on')
     parser.add_argument('--d_dim', type=int, required=False, default=64, help='Output dimensionality')
     parser.add_argument('--hidden_dim', type=int, required=False, default=128, help='Hidden dimensionality')
