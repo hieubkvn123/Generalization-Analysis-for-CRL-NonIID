@@ -40,8 +40,8 @@
 #python3 train.py --dataset mnist --k 3 --outfile results/ablation_study_iid_vs_noniid_mnist.csv --batch_size 10 --M 19000 --regime subsample --train_loss_thresh 0.001
 #python3 train.py --dataset mnist --k 3 --outfile results/ablation_study_iid_vs_noniid_mnist.csv --batch_size 10 --M 19500 --regime subsample --train_loss_thresh 0.001
 #python3 train.py --dataset mnist --k 3 --outfile results/ablation_study_iid_vs_noniid_mnist.csv --batch_size 10 --M 20000 --regime subsample --train_loss_thresh 0.001
-python3 train.py --dataset mnist --k 3 --outfile results/ablation_study_iid_vs_noniid_mnist.csv --batch_size 10 --M 30000 --regime subsample --train_loss_thresh 0.001
-python3 train.py --dataset mnist --k 3 --outfile results/ablation_study_iid_vs_noniid_mnist.csv --batch_size 10 --M 40000 --regime subsample --train_loss_thresh 0.001
+#python3 train.py --dataset mnist --k 3 --outfile results/ablation_study_iid_vs_noniid_mnist.csv --batch_size 10 --M 30000 --regime subsample --train_loss_thresh 0.001
+#python3 train.py --dataset mnist --k 3 --outfile results/ablation_study_iid_vs_noniid_mnist.csv --batch_size 10 --M 40000 --regime subsample --train_loss_thresh 0.001
 python3 train.py --dataset mnist --k 3 --outfile results/ablation_study_iid_vs_noniid_mnist.csv --batch_size 10 --M 50000 --regime subsample --train_loss_thresh 0.001
 python3 train.py --dataset mnist --k 3 --outfile results/ablation_study_iid_vs_noniid_mnist.csv --batch_size 10 --M 60000 --regime subsample --train_loss_thresh 0.001
 python3 train.py --dataset mnist --k 3 --outfile results/ablation_study_iid_vs_noniid_mnist.csv --batch_size 10 --M 70000 --regime subsample --train_loss_thresh 0.001
