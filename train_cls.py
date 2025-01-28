@@ -152,7 +152,6 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, required=False, default='gaussian', help='The dataset to experiment on')
     parser.add_argument('--d_dim', type=int, required=False, default=64, help='Output dimensionality')
     parser.add_argument('--hidden_dim', type=int, required=False, default=128, help='Hidden dimensionality')
-    parser.add_argument('--L', type=int, required=False, default=2, help='Number of layers')
     parser.add_argument('--num_seeds', type=int, required=False, default=5, help='Number of experiments to repeat')
     parser.add_argument('--num_train', type=int, required=False, default=30000, help='Number of supervised data points to train on')
     parser.add_argument('--batch_size', type=int, required=False, default=64, help='Batch size')
@@ -178,10 +177,8 @@ if __name__ == '__main__':
         args['seed'] = j + 1
 
         # Get base model
-        base = get_model(in_dim=DATASET_TO_INDIM[args['dataset']], out_dim=args['d_dim'], hidden_dim=args['hidden_dim'], L=args['L'])
-        cls = nn.Linear(args['d_dim'], DATASET_TO_NUMCLS[args['dataset']]).to(base.device)
-        model = nn.Sequential( base, cls ).to(DEVICE)
-        best_val_acc_sup = train_classifier(args, model, train_dataloader, test_dataloader)
+        cls = nn.Linear(DATASET_TO_INDIM[args['dataset']], DATASET_TO_NUMCLS[args['dataset']]).to(DEVICE)
+        best_val_acc_sup = train_classifier(args, cls, train_dataloader, test_dataloader)
 
         # Save experiment result
         if args['outfile']:

@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 RESULT_FILE1 = 'results/ablation_study_iid_vs_noniid_mnist.csv'
+RESULT_FILE2 = 'results/ablation_study_iid_vs_noniid_mnist_only_cls.csv'
 
 def plot_errbar(ax, df, baseline, metric):
     tmp = df[df['regime'] == 'subsample']
@@ -13,9 +14,9 @@ def plot_errbar(ax, df, baseline, metric):
     mean_independent = baseline[metric].mean()
     std_independent = baseline[metric].std()
     CI95 = 1.96 * std_independent / np.sqrt(len(baseline))
-    ax.axhline(y=mean_independent, color='red', label='Baseline ($i.i.d.$ case)')
-    ax.axhline(y=mean_independent - CI95, color='red', linestyle='-.', label='Baseline CI95 ($i.i.d.$ case)')
-    ax.axhline(y=mean_independent + CI95, color='red', linestyle='-.')
+    ax.axhline(y=mean_independent, color='tab:red', label='Baseline ($i.i.d.$ case)')
+    ax.axhline(y=mean_independent - CI95, color='tab:red', linestyle='-.', label='Baseline CI95 ($i.i.d.$ case)')
+    ax.axhline(y=mean_independent + CI95, color='tab:red', linestyle='-.')
 
     # Plot the sub-sample regime
     mean = tmp.groupby('M')[metric].mean()
@@ -31,6 +32,7 @@ def plot_result1(output, figsize=(12, 7)):
 
     # Read the data file
     df = pd.read_csv(RESULT_FILE1)
+    df_cls = pd.read_csv(RESULT_FILE2)
     baseline = df[df['regime'] == 'independent']
 
     # Initialize plot
@@ -49,6 +51,14 @@ def plot_result1(output, figsize=(12, 7)):
     axes[1].set_ylabel("Classifier Accuracy")
     axes[1].legend()
     axes[1].grid()    
+
+    # Plot the range for cls without CRL
+    mean_acc = df_cls['val_acc'].mean()
+    std_acc = df_cls['val_acc'].std()
+    CI95 = 1.96 * std_acc / np.sqrt(len(df_cls))
+    axes[1].axhline(y=mean_acc, color='tab:orange', linestyle='-.', label='Baseline (without CRL)')
+    axes[1].axhline(y=mean_acc - CI95, color='tab:orange', linestyle='-.', label='Baseline CI95 (without CRL)')
+    axes[1].axhline(y=mean_acc + CI95, color='tab:orange', linestyle='-.')
 
     # Plot 
     plt.tight_layout()
