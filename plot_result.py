@@ -4,7 +4,25 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-RESULT_FILE1 = 'results/ablation_study_iid_vs_noniid_mnist_old.csv'
+RESULT_FILE1 = 'results/ablation_study_iid_vs_noniid_mnist.csv'
+
+def plot_errbar(ax, df, baseline, metric):
+    tmp = df[df['regime'] == 'subsample']
+    
+    # Plot the baseline
+    mean_independent = baseline[metric].mean()
+    std_independent = baseline[metric].std()
+    CI95 = 1.96 * std_independent / np.sqrt(len(baseline))
+    ax.axhline(y=mean_independent, color='red', label='Baseline ($i.i.d.$ case)')
+    ax.axhline(y=mean_independent - CI95, color='red', linestyle='-.', label='Baseline CI95 ($i.i.d.$ case)')
+    ax.axhline(y=mean_independent + CI95, color='red', linestyle='-.')
+
+    # Plot the sub-sample regime
+    mean = tmp.groupby('M')[metric].mean()
+    std = tmp.groupby('M')[metric].std()
+    ax.errorbar(mean.index, mean, yerr=std, label='Sub-sample (Non-$i.i.d.$ case)')
+
+    return ax 
 
 def plot_result1(output, figsize=(12, 7)):
     if not os.path.exists(RESULT_FILE1):
@@ -13,23 +31,26 @@ def plot_result1(output, figsize=(12, 7)):
 
     # Read the data file
     df = pd.read_csv(RESULT_FILE1)
-    tmp = df[df['regime'] == 'subsample']
-    baseline = df[df['regime'] == 'independent']['gen_gap']
+    baseline = df[df['regime'] == 'independent']
 
     # Initialize plot
-    fig, ax = plt.subplots(figsize=figsize)
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
 
-    # Plot the baseline
-    ax.hlines(y=baseline, xmin=min(tmp['M']), xmax=max(df['M']), linestyle='-.', color='r', label='Baseline ($i.i.d.$ case)')
+    # Plot errorbars for gen gap
+    axes[0] = plot_errbar(axes[0], df, baseline, metric='gen_gap')
+    axes[0].set_xlabel('Number of tuples used for training ($\mathrm{M}$)')
+    axes[0].set_ylabel("Generalization gap")
+    axes[0].legend()
+    axes[0].grid()    
 
-    # Axes labels
-    ax.plot(tmp['M'], tmp['gen_gap'], label='Non-$i.i.d.$ case')
-    ax.set_xlabel('Number of tuples used for training ($\mathrm{M}$)')
-    ax.set_ylabel("Generalization gap")
+    # Plot errorbars for gen gap
+    axes[1] = plot_errbar(axes[1], df, baseline, metric='test_acc')
+    axes[1].set_xlabel('Number of tuples used for training ($\mathrm{M}$)')
+    axes[1].set_ylabel("Classifier Accuracy")
+    axes[1].legend()
+    axes[1].grid()    
 
     # Plot 
-    plt.legend()
-    plt.grid()
     plt.tight_layout()
     plt.savefig(output)
     print(f'Output saved to {output}.')
@@ -37,3 +58,4 @@ def plot_result1(output, figsize=(12, 7)):
 
 if __name__ == '__main__':
     plot_result1(output='result.png')
+    
