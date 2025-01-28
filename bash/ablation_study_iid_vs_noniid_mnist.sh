@@ -1,4 +1,5 @@
 #!/bin/bash
+#python3 train_cls.py --dataset mnist --outfile results/ablation_study_iid_vs_noniid_mnist_only_cls.csv --batch_size 10 --num_train 30000 
 #python3 train.py --dataset mnist --k 3 --outfile results/ablation_study_iid_vs_noniid_mnist.csv --batch_size 10 --M 10000 --regime independent --train_loss_thresh 0.001
 #python3 train.py --dataset mnist --k 3 --outfile results/ablation_study_iid_vs_noniid_mnist.csv --batch_size 10 --M 500 --regime subsample --train_loss_thresh 0.001
 #python3 train.py --dataset mnist --k 3 --outfile results/ablation_study_iid_vs_noniid_mnist.csv --batch_size 10 --M 1000 --regime subsample --train_loss_thresh 0.001
