@@ -15,7 +15,7 @@
                                     # Format <DD-HH:MM:SS> eg. 5 days 05-00:00:00
                                     # Format <DD-HH:MM:SS> eg. 24 hours 1-00:00:00 or 24:00:00
 #SBATCH --mail-type=END             # When should you receive an email?
-#SBATCH --output=iid_niid_mnist.out # Where should the log files go?
+#SBATCH --output=iid_niid_mnist2.out # Where should the log files go?
                                     # You must provide an absolute path eg /common/home/module/username/
                                     # If no paths are provided, the output file will be placed in your current working directory
 
