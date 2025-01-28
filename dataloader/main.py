@@ -9,12 +9,13 @@ from dataloader.common import get_default_device
 from dataloader.gaussian import generate_gaussian_clusters
 
 import os
+import pickle
 import pathlib
 import numpy as np
 from collections import defaultdict
 
 # Constants
-N_TEST_TUPLES = 5000
+N_TEST_TUPLES = 1000
 
 # Data loader
 default_transform = transforms.Compose([transforms.ToTensor()])
@@ -33,12 +34,12 @@ def get_dataset(name='cifar100', k=3, n=1000, regime='subsample'):
         train_data_raw, test_data_raw = generate_gaussian_clusters(N*2, './data/gaussian') 
 
     # Wrap them in custom dataset definition
-    train_data = UnsupervisedDatasetWrapper(train_data_raw, k, n, regime=regime).get_dataset()
+    train_data = UnsupervisedDatasetWrapper(train_data_raw, k, n, regime=regime, indices_file='ind_indices.txt').get_dataset()
     test_data  = UnsupervisedDatasetWrapper(test_data_raw,  k, N_TEST_TUPLES, regime='subsample').get_dataset()
 
     return train_data, test_data, train_data_raw, test_data_raw
 
-def get_dataloader(name='cifar100', save_path='cache', regime='subsample', save_loader=True, batch_size=64, num_batches=1000, sample_ratio=1.0, k=3):
+def get_dataloader(name='cifar100', save_path='cache', regime='subsample', save_loader=True, batch_size=64, num_batches=1000, sample_ratio=1.0, k=3, indices=None):
     # Get loader directly if saved
     loader_dir = os.path.join(save_path, name, f'{name}-m{batch_size*num_batches}-k{k}-{regime}')
     train_path = os.path.join(loader_dir, 'train.pth')
@@ -56,6 +57,7 @@ def get_dataloader(name='cifar100', save_path='cache', regime='subsample', save_
     # Get dataset
     train_data, test_data, train_data_raw, test_data_raw = get_dataset(name=name, k=k, n=num_batches*batch_size, regime=regime)
 
+
     # Sample fewer data samples
     train_sampler = SubsetRandomSampler(
         indices=torch.arange(int(len(train_data) * sample_ratio))
@@ -67,6 +69,7 @@ def get_dataloader(name='cifar100', save_path='cache', regime='subsample', save_
     # Create custom dataloaders
     train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size, shuffle=False)
     test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=batch_size, shuffle=False)
+        
     
     # Create supervised dataloader
     train_dataloader_sup = DataLoader(train_data_raw, batch_size=batch_size, shuffle=True)

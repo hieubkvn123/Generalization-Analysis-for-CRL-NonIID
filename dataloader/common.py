@@ -1,5 +1,7 @@
+import os
 import torch
 import random
+import pickle
 import pprint
 import itertools
 import numpy as np
@@ -29,7 +31,7 @@ def apply_model_to_batch(model, batch, device=None):
     return y1, y2, y3
 
 class UnsupervisedDatasetWrapper(object):
-    def __init__(self, dataset, k, n, regime='subsample'):
+    def __init__(self, dataset, k, n, regime='subsample', indices_file=None):
         # Just to make sure
         super().__init__()
         assert regime in ['subsample', 'independent', 'all'], f'Invalid regime {regime}'
@@ -39,7 +41,17 @@ class UnsupervisedDatasetWrapper(object):
         self.n = n
         self.regime = regime
         self.dataset = dataset
+        self.indices_file = indices_file
         
+        # If there is a specified list of indices
+        if self.indices_file:
+            if os.path.exists(self.indices_file) and regime != 'independent':
+                print(f'Loading indices from {self.indices_file}')
+                with open(self.indices_file, 'rb') as f:
+                    indices = list(pickle.load(f))
+                self.dataset = torch.utils.data.Subset(self.dataset, indices)
+                print(f'Dataset length : {len(self.dataset)}')
+
         # Map labels to instance indices
         self.label_to_indices = defaultdict(list)
         for idx, (_, label) in enumerate(self.dataset):
@@ -54,6 +66,7 @@ class UnsupervisedDatasetWrapper(object):
         else:
             self.all_tuples = self._generate_all_data_tuples()
 
+
     def get_dataset(self):
         return UnsupervisedDataset(self.dataset, self.all_tuples)
 
@@ -64,10 +77,12 @@ class UnsupervisedDatasetWrapper(object):
 
         # For all class
         for label in list(self.label_to_indices.keys()):
+            print(f'Generating tuples for class {label}')
             positive_samples = set(self.label_to_indices[label])
             negative_samples = set(np.concatenate([v for k, v in self.label_to_indices.items() if k != label]))
 
             # Get all permutations from positive and combinations from negative
+            print(positive_samples)
             permutations_pos = set(itertools.permutations(positive_samples, 2))
             combinations_neg = set(itertools.combinations(negative_samples, self.k))
 
@@ -104,6 +119,13 @@ class UnsupervisedDatasetWrapper(object):
                 current_instance.append(negative_index)
                 used_indices.add(negative_index)
             all_tuples.append(current_instance)
+
+        # Save the set of indices
+        if self.indices_file:
+            with open(self.indices_file, 'wb') as f:
+                pickle.dump(used_indices, f)
+                print(f'Set of indpendent tuples saved to {self.indices_file}')
+    
         return all_tuples
 
     # Sample from the original dataset n tuples of k+2 vectors
