@@ -155,7 +155,7 @@ def train(args, train_dataloader, test_dataloader):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--epochs', type=int, required=False, default=1000, help='Number of training iterations')
+    parser.add_argument('--epochs', type=int, required=False, default=300, help='Number of training iterations')
     parser.add_argument('--N', type=int, required=False, default=500, help='Number of labeled data points')
     parser.add_argument('--d_dim', type=int, required=False, default=64, help='Output dimensionality')
     parser.add_argument('--k', type=int, required=False, default=3, help='Number of negative samples')

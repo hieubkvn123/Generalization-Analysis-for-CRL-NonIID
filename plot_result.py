@@ -35,7 +35,6 @@ def plot_result1(output, figsize=(12, 7)):
     axes[1].grid()
 
     # Plot 
-    plt.legend()
     plt.tight_layout()
     plt.savefig(output)
     print(f'Output saved to {output}.')
