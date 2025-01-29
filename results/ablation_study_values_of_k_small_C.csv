@@ -14,4 +14,6 @@ epochs,N,d_dim,k,C,L,hidden_dim,batch_size,regime,outfile,target,eps,dataset,tra
 300,500,64,15,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.0090987335923793,0.4654809599220753,0.456382226329696,89
 300,500,64,20,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.0095860979508426,0.4632795800417661,0.4536934820909234,258
 300,500,64,25,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.0060450201322055,0.4686781173527241,0.4626330972205185,199
-300,500,64,30,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.004543878917805462,0.48641053451895716,0.4818666556011517,149
+300,500,64,30,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.0045438789178054,0.4864105345189571,0.4818666556011517,149
+300,500,64,35,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.0057311183420207,0.5383064940840006,0.5325753757419798,209
+300,500,64,40,5,1,128,64,subsample,results/ablation_study_values_of_k_small_C.csv,0.5,0.05,gaussian,0.009379736613482237,0.5165427818477154,0.5071630452342332,219
