@@ -17,4 +17,9 @@ epochs,N,d_dim,k,C,L,hidden_dim,batch_size,regime,outfile,target,eps,dataset,tra
 300,500,64,3,30,1,128,64,subsample,results/ablation_study_values_of_C_small_k.csv,0.5,0.05,gaussian,0.0097435609228847,0.5035924728006125,0.4938489118777278,1542
 300,500,64,3,35,1,128,64,subsample,results/ablation_study_values_of_C_small_k.csv,0.5,0.05,gaussian,0.0086383766926317,0.5146368910834194,0.5059985143907876,1924
 300,500,64,3,40,1,128,64,subsample,results/ablation_study_values_of_C_small_k.csv,0.5,0.05,gaussian,0.0095790191917935,0.5519711227446794,0.5423921035528858,2307
-300,500,64,3,45,1,128,64,subsample,results/ablation_study_values_of_C_small_k.csv,0.5,0.05,gaussian,0.00872743745677225,0.4950859796762466,0.4863585422194744,2880
+300,500,64,3,45,1,128,64,subsample,results/ablation_study_values_of_C_small_k.csv,0.5,0.05,gaussian,0.0087274374567722,0.4950859796762466,0.4863585422194744,2880
+300,500,64,3,50,1,128,64,subsample,results/ablation_study_values_of_C_small_k.csv,0.5,0.05,gaussian,0.0099601500683007,0.5268680527865887,0.5169079027182879,3048
+300,500,64,3,5,1,128,64,subsample,results/ablation_study_values_of_C_small_k.csv,0.5,0.05,gaussian,0.0067574308486655,0.546929756295681,0.5401723254470154,22
+300,500,64,3,10,1,128,64,subsample,results/ablation_study_values_of_C_small_k.csv,0.5,0.05,gaussian,0.008638640330173,0.5112617500543595,0.5026231097241864,125
+300,500,64,3,15,1,128,64,subsample,results/ablation_study_values_of_C_small_k.csv,0.5,0.05,gaussian,0.0091651421263004,0.5348665091246366,0.5257013669983363,441
+300,500,64,3,20,1,128,64,subsample,results/ablation_study_values_of_C_small_k.csv,0.5,0.05,gaussian,0.008381390692796732,0.5578723788022995,0.5494909881095027,681
