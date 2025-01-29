@@ -5,3 +5,8 @@ epochs,dataset,d_dim,hidden_dim,num_seeds,num_train,batch_size,lr,regime,train_l
 1000,mnist,64,128,5,300,10,0.0009,subsample,0.01,results/ablation_study_iid_vs_noniid_mnist_only_cls.csv,3,84.74
 1000,mnist,64,128,5,300,10,0.0009,subsample,0.01,results/ablation_study_iid_vs_noniid_mnist_only_cls.csv,4,84.45
 1000,mnist,64,128,5,300,10,0.0009,subsample,0.01,results/ablation_study_iid_vs_noniid_mnist_only_cls.csv,5,84.88
+1000,mnist,64,128,5,300,10,0.0009,subsample,0.01,results/ablation_study_iid_vs_noniid_mnist_only_cls.csv,1,84.56
+1000,mnist,64,128,5,300,10,0.0009,subsample,0.01,results/ablation_study_iid_vs_noniid_mnist_only_cls.csv,2,84.67
+1000,mnist,64,128,5,300,10,0.0009,subsample,0.01,results/ablation_study_iid_vs_noniid_mnist_only_cls.csv,3,84.75
+1000,mnist,64,128,5,300,10,0.0009,subsample,0.01,results/ablation_study_iid_vs_noniid_mnist_only_cls.csv,4,84.81
+1000,mnist,64,128,5,300,10,0.0009,subsample,0.01,results/ablation_study_iid_vs_noniid_mnist_only_cls.csv,5,84.87
