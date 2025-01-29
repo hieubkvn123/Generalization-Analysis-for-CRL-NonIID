@@ -36,6 +36,7 @@ def get_dataset(name='cifar100', k=3, n=1000, regime='subsample'):
     # Wrap them in custom dataset definition
     train_data = UnsupervisedDatasetWrapper(train_data_raw, k, n, regime=regime, indices_file='ind_indices.txt').get_dataset()
     test_data  = UnsupervisedDatasetWrapper(test_data_raw,  k, N_TEST_TUPLES, regime='subsample').get_dataset()
+    print(len(test_data))
 
     return train_data, test_data, train_data_raw, test_data_raw
 
