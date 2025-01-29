@@ -7,16 +7,24 @@ from argparse import ArgumentParser
 RESULT_FILE1 = 'results/ablation_study_iid_vs_noniid_mnist.csv'
 RESULT_FILE2 = 'results/ablation_study_iid_vs_noniid_mnist_only_cls.csv'
 
-def plot_errbar(ax, df, baseline, metric):
+def plot_errbar(ax, df, baseline1, baseline2, metric):
     tmp = df[df['regime'] == 'subsample']
     
-    # Plot the baseline
-    mean_independent = baseline[metric].mean()
-    std_independent = baseline[metric].std()
-    CI95 = 1.96 * std_independent / np.sqrt(len(baseline))
+    # Plot the baseline (iid case)
+    mean_independent = baseline1[metric].mean()
+    std_independent = baseline1[metric].std()
+    CI95 = 1.96 * std_independent / np.sqrt(len(baseline1))
     ax.axhline(y=mean_independent, color='tab:red', label='Baseline ($i.i.d.$ case)')
     ax.axhline(y=mean_independent - CI95, color='tab:red', linestyle='-.', label='Baseline CI95 ($i.i.d.$ case)')
     ax.axhline(y=mean_independent + CI95, color='tab:red', linestyle='-.')
+
+    # Plot the baseline (all-tuples)
+    mean_independent = baseline2[metric].mean()
+    std_independent = baseline2[metric].std()
+    CI95 = 1.96 * std_independent / np.sqrt(len(baseline2))
+    ax.axhline(y=mean_independent, color='tab:green', label='Baseline (all-tuples case)')
+    ax.axhline(y=mean_independent - CI95, color='tab:green', linestyle='-.', label='Baseline CI95 (all-tuples case)')
+    ax.axhline(y=mean_independent + CI95, color='tab:green', linestyle='-.')
 
     # Plot the sub-sample regime
     mean = tmp.groupby('M')[metric].mean()
@@ -33,20 +41,21 @@ def plot_result1(output, figsize=(12, 7)):
     # Read the data file
     df = pd.read_csv(RESULT_FILE1)
     df_cls = pd.read_csv(RESULT_FILE2)
-    baseline = df[df['regime'] == 'independent']
+    baseline1 = df[df['regime'] == 'independent']
+    baseline2 = df[df['regime'] == 'all']
 
     # Initialize plot
     fig, axes = plt.subplots(1, 2, figsize=figsize)
 
     # Plot errorbars for gen gap
-    axes[0] = plot_errbar(axes[0], df, baseline, metric='gen_gap')
+    axes[0] = plot_errbar(axes[0], df, baseline1, baseline2, metric='gen_gap')
     axes[0].set_xlabel('Number of tuples used for training ($\mathrm{M}$)')
     axes[0].set_ylabel("Generalization gap")
     axes[0].legend()
     axes[0].grid()    
 
     # Plot errorbars for gen gap
-    axes[1] = plot_errbar(axes[1], df, baseline, metric='test_acc')
+    axes[1] = plot_errbar(axes[1], df, baseline1, baseline2, metric='test_acc')
     axes[1].set_xlabel('Number of tuples used for training ($\mathrm{M}$)')
     axes[1].set_ylabel("Classifier Accuracy")
 
