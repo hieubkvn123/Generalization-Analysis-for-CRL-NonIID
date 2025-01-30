@@ -39,8 +39,11 @@ def plot_result1(output, figsize=(12, 7)):
 
     # Initialize plot
     fig, axes = plt.subplot_mosaic([['left', 'right']], layout='constrained', figsize=figsize)
-    axes['left'].tick_params(axis='both', which='major', labelsize=10)
-    axes['right'].tick_params(axis='both', which='major', labelsize=10)
+    axes['left'].tick_params(axis='both', which='major', labelsize=12)
+    axes['left'].ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    axes['right'].tick_params(axis='both', which='major', labelsize=12)
+    axes['right'].ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+
 
     # Plot the range for cls without CRL
     mean_acc = df_cls['val_acc'].mean()
@@ -53,18 +56,18 @@ def plot_result1(output, figsize=(12, 7)):
 
     # Plot errorbars for gen gap
     axes['left'] = plot_errbar(axes['left'], df, baseline, metric='gen_gap', label=False)
-    axes['left'].set_xlabel('Number of tuples used for training ($\mathrm{M}$)')
-    axes['left'].set_ylabel("Generalization gap")
+    axes['left'].set_xlabel('Number of tuples ($\mathrm{M}$)', fontsize=20)
+    axes['left'].set_ylabel("Generalization gap", fontsize=20)
     axes['left'].grid()    
 
     # Plot errorbars for gen gap
     axes['right'] = plot_errbar(axes['right'], df, baseline, metric='test_acc')
-    axes['right'].set_xlabel('Number of tuples used for training ($\mathrm{M}$)')
-    axes['right'].set_ylabel("Classifier Accuracy")
+    axes['right'].set_xlabel('Number of tuples ($\mathrm{M}$)', fontsize=20)
+    axes['right'].set_ylabel("Classifier Accuracy", fontsize=20)
 
 
     # Plot 
-    fig.legend(loc='outside upper left', mode='expand', ncols=3)
+    fig.legend(loc='outside upper left', mode='expand', ncols=3, fontsize=17)
     plt.savefig(output)
     print(f'Output saved to {output}.')
          
