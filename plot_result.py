@@ -29,8 +29,8 @@ def plot_result1(output, figsize=(12, 7)):
     axes[0].errorbar(mean.index, mean, yerr=std, linestyle='-.', marker='o')
 
     ## Axes labels
-    axes[0].set_xlabel('Number of negative samples $k$ ($\epsilon=0.5$)')
-    axes[0].set_ylabel('Sample complexity $\mathrm{N}_\epsilon$')
+    axes[0].set_xlabel('Number of negative samples $k$')
+    axes[0].set_ylabel('Sample complexity $\mathrm{N}_\epsilon$ ($\epsilon=0.5$)')
     axes[0].grid()
 
     # Plot result 2
@@ -41,7 +41,7 @@ def plot_result1(output, figsize=(12, 7)):
     axes[1].errorbar(mean.index, mean, yerr=std, linestyle='-.', marker='o')
 
     ## Axes labels
-    axes[1].set_xlabel('Number of classes $|\mathcal{C}|$ ($\epsilon=0.5$)')
+    axes[1].set_xlabel('Number of classes $|\mathcal{C}|$')
     axes[1].grid()
 
     # Plot 
