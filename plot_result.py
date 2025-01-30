@@ -67,5 +67,5 @@ def plot_result1(output, figsize=(12, 7)):
          
 
 if __name__ == '__main__':
-    plot_result1(output='result.png')
+    plot_result1(output='result.pdf')
     
