@@ -18,7 +18,9 @@ def plot_result1(output, figsize=(12, 7)):
     # Plot result 1
     ## Read the data file
     df = pd.read_csv(RESULT_FILE1)
-    axes[0].plot(df['k'], df['Nmin'], linestyle='-.', marker='o')
+    mean = df.groupby('k')['Nmin'].mean()
+    std = df.groupby('k')['Nmin'].std()
+    axes[0].errorbar(mean.index, mean, yerr=std, linestyle='-.', marker='o')
 
     ## Axes labels
     axes[0].set_xlabel('Number of negative samples ($k$)')
@@ -28,7 +30,9 @@ def plot_result1(output, figsize=(12, 7)):
     # Plot result 2
     ## Read the data file
     df = pd.read_csv(RESULT_FILE2)
-    axes[1].plot(df['C'], df['Nmin'], linestyle='-.', marker='o')
+    mean = df.groupby('C')['Nmin'].mean()
+    std = df.groupby('C')['Nmin'].std()
+    axes[1].errorbar(mean.index, mean, yerr=std, linestyle='-.', marker='o')
 
     ## Axes labels
     axes[1].set_xlabel('Number of classes ($|\mathcal{C}|$)')
