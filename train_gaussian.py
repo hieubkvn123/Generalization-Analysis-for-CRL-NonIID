@@ -93,6 +93,7 @@ def train(args):
         amsgrad=True)
 
     # To be stored as final result
+    final_emp_risk, final_pop_risk = 0.0, 0.0
     for epoch in range(1, args['epochs'] + 1):
         # Training phase
         model.train()
@@ -154,15 +155,16 @@ def train(args):
             # --- #
             if empirical_risk <= TRAIN_LOSS_THRESHOLD:
                 print('[INFO] Train loss target reached, early stopping...')
+                final_emp_risk, final_pop_risk = empirical_risk, population_risk
                 break
             print('------\n')
 
     # Save result
     if args['outfile']:
         results = {
-            'train_loss': final_average_train_loss,
-            'test_loss' : final_average_test_loss,
-            'gen_gap'   : final_average_test_loss - final_average_train_loss
+            'empirical_risk'  : final_emp_risk,
+            'population_risk' : final_pop_risk,
+            'gen_gap'         : final_pop_risk - final_emp_risk 
         }
         save_experiment_result(args, results, args['outfile'])
 
