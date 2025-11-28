@@ -11,7 +11,7 @@ from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler
 # Some global constants 
 DEFAULT_CLUSTER_STD = 0.1
 DEFAULT_NUM_CLASSES = 20
-DEFAULT_INPUT_DIM   = 128
+DEFAULT_INPUT_DIM   = 256
 DEFAULT_SAVE_FOLDER = 'gaussian'
 DEFAULT_CLASS_PROBS = [1/DEFAULT_NUM_CLASSES]*DEFAULT_NUM_CLASSES 
 

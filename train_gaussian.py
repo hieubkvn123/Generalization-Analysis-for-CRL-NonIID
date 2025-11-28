@@ -25,10 +25,7 @@ plt.style.use('seaborn-v0_8-paper')
 plt.rcParams['text.usetex'] = True
 
 # Constants for training
-BATCH_SIZE = 64
-INPUT_DIM  = 128
-MAX_EPOCHS = 1000
-TRAIN_LOSS_THRESHOLD = 1e-3
+TRAIN_LOSS_THRESHOLD = 0.01
 
 def save_experiment_result(args, results, outfile):
     # Create folder if not exists
@@ -158,6 +155,7 @@ def train(args):
             if empirical_risk <= TRAIN_LOSS_THRESHOLD:
                 print('[INFO] Train loss target reached, early stopping...')
                 break
+            print('------\n')
 
     # Save result
     if args['outfile']:
