@@ -25,6 +25,7 @@ plt.style.use('seaborn-v0_8-paper')
 plt.rcParams['text.usetex'] = True
 
 # Constants for training
+INPUT_DIM = 256
 TRAIN_LOSS_THRESHOLD = 0.01
 
 def save_experiment_result(args, results, outfile):
@@ -168,7 +169,7 @@ def train(args):
         }
         save_experiment_result(args, results, args['outfile'])
 
-    return final_average_train_loss, final_average_test_loss
+    return final_emp_risk, final_pop_risk 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
