@@ -9,10 +9,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from torch.utils.data import DataLoader
-from dataloader.main import get_dataloader
 from dataloader.gaussian import generate_gaussian_clusters
+from dataloader.main import get_dataloader, default_transform
 from dataloader.common import apply_model_to_batch, save_json_dict
 from dataloader.common import UnsupervisedDatasetWrapper
+from dataloader.gaussian import GaussianTestDataset
 from models import get_model, logistic_loss
 
 # Visualization configs
@@ -65,18 +66,19 @@ def generate_class_probs(R, p_min):
 
 
 def train(args):
-    # Load Gaussian dataset
+    # Check if GPU is available
+    if torch.cuda.is_available():
+        print('GPU is available')
+
+    # Generate training dataset 
     class_probs = generate_class_probs(args['R'], args['rho_min'])
-    train_data, test_data, configs = generate_gaussian_clusters(args['N'], class_probs=class_probs)
+    train_data, configs = generate_gaussian_clusters(args['N'], class_probs=class_probs)
     train_data = UnsupervisedDatasetWrapper(train_data, k=args['k'], M=args['M'], regime=args['regime']).get_dataset()
-    test_data  = UnsupervisedDatasetWrapper(test_data,  k=args['k'], M=args['M'], regime=args['regime']).get_dataset()
-
-    # Get necessary things
-    probs, mus, sigmas = configs['probs'], configs['mu'], configs['sigma']
-
-    # Create data loader
     train_dataloader = DataLoader(train_data, batch_size=args['batch_size'], shuffle=False)
-    test_dataloader  = DataLoader(test_data,  batch_size=args['batch_size'], shuffle=False)
+
+    # Generate testing dataset
+    test_data = GaussianTestDataset(configs['probs'], configs['mu'], configs['sigma'], args['num_test_per_class'], args['k'])
+    test_dataloader = DataLoader(test_data, batch_size=args['batch_size'],shuffle=False)
 
     # Get data length
     num_train_batches = len(train_dataloader)
@@ -93,53 +95,62 @@ def train(args):
         amsgrad=True)
 
     # To be stored as final result
-    final_average_train_loss, final_average_test_loss = 0, 0
     for epoch in range(1, args['epochs'] + 1):
-        # Set to train mode
+        # Training phase
         model.train()
-        print(f'[*] Epoch #[{epoch+1}/{args["epochs"]}]:')
-        with tqdm.tqdm(total=len(train_dataloader)) as pbar:
+
+        # --- #
+        empirical_risk = 0.0
+        print(f'[*] Epoch #[{epoch}/{args["epochs"]}]:')
+        with tqdm.tqdm(total=num_train_batches) as pbar:
             total_loss = 0.0
             for i, batch in enumerate(train_dataloader):
                 # Calculate loss
-                weights = batch[3] / torch.sum(torch.abs(batch[3]))
+                weights = batch[3] # / torch.sum(torch.abs(batch[3]))
+                if i == 0: print(weights)
                 y1, y2, y3 = apply_model_to_batch(model, batch, device=model.device)
                 loss = logistic_loss(y1, y2, y3) * weights
-                total_loss_batchwise = torch.sum(loss) 
+                mean_batchwise_loss = torch.sum(loss) / args['batch_size'] 
                     
                 # Back propagation
-                total_loss_batchwise.backward()
+                mean_batchwise_loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
 
                 # Update loss for this epoch
-                total_loss += total_loss_batchwise.item()
+                total_loss += mean_batchwise_loss.item()
                 
                 # Update progress bar
                 pbar.set_postfix({
-                    'train_loss' : f'{total_loss_batchwise.item():.5f}',
+                    'train_loss' : f'{mean_batchwise_loss.item():.5f}',
                     'batch' : f'#[{i+1}/{num_train_batches}]'
                 })
                 pbar.update(1)
             time.sleep(0.1)
-            final_average_train_loss = total_loss / (num_train_batches * args['batch_size'])
-            print(f'\nAverage train loss : {final_average_train_loss:.4f}\n------\n')
+            empirical_risk = total_loss / (num_train_batches * args['batch_size'])
+            print(f'\nAverage train loss : {empirical_risk:.4f}\n------\n')
 
-        if final_average_train_loss <= TRAIN_LOSS_THRESHOLD:
+        if empirical_risk <= TRAIN_LOSS_THRESHOLD:
             print('[INFO] Train loss target reached, early stopping...')
             break
 
-        # Evaluate the model
-        if epoch % 10 == 0:
+        # Evaluation phase
+        if epoch % args['eval_every'] == 0:
             model.eval()
-            print('------\nEvaluation:')
-            for i, (prob, mu, sigma) in enumerate(zip(configs['probs'], configs['mu'], configs['sigma'])):
-                # Evaluate the model on some tuple corresponding to current class 
-                neg_classes = np.delete(np.arange(len(probs)), idx)
-                neg_probs = rhos[neg_classes]
-                neg_probs = neg_probs / neg_probs.sum() # Re-normalize
 
-                # Estimate the expected risk of this class
+            # --- #
+            print('------\nEvaluation:')
+            population_risk = 0.0
+            total_test_loss = 0.0
+            with tqdm.tqdm(total=num_test_batches) as pbar:
+                for i, batch in enumerate(test_dataloader):
+                    weights = batch[3]
+                    y1, y2, y3 = apply_model_to_batch(model, batch, device=model.device)
+                    loss = logistic_loss(y1, y2, y3) * weights
+                    total_test_loss += torch.sum(loss).item()
+                    pbar.update(1)
+                population_risk = (1/args['num_test_per_class']) * total_test_loss 
+            print(f'Population risk estimated: {population_risk:.4f}')
 
     # Save result
     if args['outfile']:
@@ -160,12 +171,14 @@ if __name__ == '__main__':
     parser.add_argument('--k', type=int, required=False, default=3, help='Number of negative samples')
     parser.add_argument('--L', type=int, required=False, default=2, help='Number of layers')
     parser.add_argument('--N', type=int, required=False, default=100000, help='Number of labeled data points')
-    parser.add_argument('--M', type=int, required=False, default=100000, help='Number of subsampled tuples')
+    parser.add_argument('--M', type=int, required=False, default=10000, help='Number of subsampled tuples')
     parser.add_argument('--R', type=int, required=False, default=1000, help='Number of classes')
     parser.add_argument('--rho_min', type=float, required=False, default=0.0001, help='Minimum class probabilities')
 
     parser.add_argument('--batch_size', type=int, required=False, default=64, help='Batch size')
     parser.add_argument('--num_batches', type=int, required=False, default=1000, help='Number of batches')
+    parser.add_argument('--num_test_per_class', type=int, required=False, default=100, help='Number of testing data points per class')
+    parser.add_argument('--eval_every', type=int, required=False, default=10, help='Evaluation interval')
     parser.add_argument('--regime', type=str, required=False, default='subsample', help='Sampling regime - all tuples or only a subset')
     parser.add_argument('--outfile', type=str, required=False, default=None, help='Output file for experiment results')
     args = vars(parser.parse_args())

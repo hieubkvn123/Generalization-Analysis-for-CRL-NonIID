@@ -43,6 +43,86 @@ class GaussianDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.Y[idx]
 
+class GaussianTestDataset(Dataset):
+    def __init__(self, rhos, mus, sigmas, N, k, seed=None):
+        self.rhos = torch.as_tensor(rhos, dtype=torch.float32)
+        self.mus = torch.as_tensor(mus, dtype=torch.float32)
+        self.sigmas = torch.as_tensor(sigmas, dtype=torch.float32)
+        self.N = N
+        self.k = k
+        self.R = len(rhos)
+        self.d = mus.shape[1]
+        
+        # Validate inputs
+        assert self.rhos.shape == (self.R,), f"rhos shape mismatch: {self.rhos.shape}"
+        assert self.mus.shape == (self.R, self.d), f"mus shape mismatch: {self.mus.shape}"
+        assert self.sigmas.shape == (self.R,), f"sigmas shape mismatch: {self.sigmas.shape}"
+        assert torch.allclose(self.rhos.sum(), torch.tensor(1.0), atol=1e-5), "rhos must sum to 1"
+        
+        # Set random seed if provided
+        if seed is not None:
+            torch.manual_seed(seed)
+            np.random.seed(seed)
+        
+        # Precompute negative sampling distributions for each component
+        self.neg_distributions = self._compute_negative_distributions()
+        
+    def _compute_negative_distributions(self):
+        neg_dists = []
+        for r in range(self.R):
+            # Get weights for all components except r
+            weights = self.rhos.clone()
+            weights[r] = 0
+            # Normalize by (1 - rho_r)
+            normalizer = 1.0 - self.rhos[r]
+            if normalizer > 0:
+                weights = weights / normalizer
+            else:
+                # Edge case: if rho_r = 1, set uniform weights
+                weights = torch.ones(self.R) / (self.R - 1)
+                weights[r] = 0
+            neg_dists.append(weights)
+        
+        return torch.stack(neg_dists)
+    
+    def _sample_from_gaussian(self, mu, sigma, n_samples=1):
+        return torch.randn(n_samples, self.d) * sigma + mu
+    
+    def _sample_negatives(self, r, k):
+        # Sample which components to draw from (with replacement)
+        weights = self.neg_distributions[r]
+        component_indices = torch.multinomial(weights, k, replacement=True)
+        
+        # Sample from the selected components
+        negatives = []
+        for idx in component_indices:
+            neg_sample = self._sample_from_gaussian(self.mus[idx], self.sigmas[idx], n_samples=1)
+            negatives.append(neg_sample.squeeze(0))
+        
+        return torch.stack(negatives)
+    
+    def __len__(self):
+        return self.R * self.N
+    
+    def __getitem__(self, idx):
+        # Determine which component r this sample belongs to
+        r = idx // self.N
+        
+        # Sample anchor and positive from N(mu_r, sigma_r^2)
+        X_anc = self._sample_from_gaussian(self.mus[r], self.sigmas[r])
+        X_pos = self._sample_from_gaussian(self.mus[r], self.sigmas[r])
+        
+        # Sample k negatives from \bar{D}_r
+        X_negs = self._sample_negatives(r, self.k)
+        
+        # Return tuple as (X_anc, X_pos, list of negatives, rho_r)
+        return (
+            X_anc.squeeze(0),
+            X_pos.squeeze(0),
+            [X_negs[i] for i in range(self.k)],
+            self.rhos[r]
+        )
+
 def _init_gaussian_centers(savedir, C=DEFAULT_NUM_CLASSES, d=DEFAULT_INPUT_DIM):
     '''
     @savedir: Directory to save gaussian centers.
@@ -105,8 +185,9 @@ def _configuration_matches(savedir, configs):
     with open(os.path.join(os.path.join(savedir, 'configs.pkl')), 'rb') as f:
         src_configs = pickle.load(f) 
         for k, v in src_configs.items():
-            if configs[k] != v:
-                return False
+            if isinstance(configs[k], float) or isinstance(configs[k], int):
+                if configs[k] != v: 
+                    return False
     return True
 
 def _onehot_encode_ints_array(arr):
@@ -135,7 +216,7 @@ def _generate_raw_gaussian_clusters(savedir, mus, sigmas, class_probs=None, d=No
 
     # Assemble configurations
     configs = {'N' : N, 'C' : C, 'd' : d, 
-                'probs' : list(class_probs),
+                'probs' : class_probs,
                 'mu': mus, 'sigma': sigmas}
     savedir_data = os.path.join(savedir, f'C{C}_d{d}_N{int(N)}')
     pathlib.Path(savedir_data).mkdir(parents=True, exist_ok=True)
@@ -169,11 +250,7 @@ def _generate_raw_gaussian_clusters(savedir, mus, sigmas, class_probs=None, d=No
     return X, Y, configs
 
 # Get Gaussian data
-def generate_gaussian_clusters(N, savedir=None, test_ratio=0.8, class_probs=None): # Test ratio w.r.t training dataset
-    # Get N-train and N-test
-    N_train = N 
-    N_test  = int(N * test_ratio)
-
+def generate_gaussian_clusters(N, savedir=None, class_probs=None): # Test ratio w.r.t training dataset
     # Generate class probabilities
     if class_probs is None:
         class_probs = DEFAULT_CLASS_PROBS
@@ -185,12 +262,9 @@ def generate_gaussian_clusters(N, savedir=None, test_ratio=0.8, class_probs=None
     mus = _init_gaussian_centers(savedir, C=len(class_probs), d=DEFAULT_INPUT_DIM)
 
     # Generate raw data
-    X, Y, configs = _generate_raw_gaussian_clusters(savedir, mus, sigmas, class_probs, N=N_train+N_test)
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, stratify=Y, test_size=test_ratio/(1+test_ratio))
-
-    train_dataset = GaussianDataset(X_train, Y_train)
-    test_dataset = GaussianDataset(X_test, Y_test)
-    return train_dataset, test_dataset, configs 
+    X, Y, configs = _generate_raw_gaussian_clusters(savedir, mus, sigmas, class_probs, N=N)
+    train_dataset = GaussianDataset(X, Y)
+    return train_dataset, configs 
 
 
 if __name__ == '__main__':

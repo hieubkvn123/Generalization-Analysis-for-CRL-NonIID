@@ -125,7 +125,6 @@ class UnsupervisedDatasetWrapper(object):
             # Check collision
             if r in negative_labels:
                 weight = self.collided_weights[r]
-            weight = weight * rho_hat_r
 
             for neg_label in negative_labels:
                 negative_index = np.random.choice(self.label_to_indices[neg_label])

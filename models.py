@@ -34,6 +34,9 @@ class Net(nn.Module):
                 nn.Linear(hidden_dim, hidden_dim, bias=False)
             )
             self.fc_hidden_layers.append(
+                nn.BatchNorm1d(hidden_dim)
+            )
+            self.fc_hidden_layers.append(
                 nn.ReLU()    
             )
         self.v = nn.Sequential(
