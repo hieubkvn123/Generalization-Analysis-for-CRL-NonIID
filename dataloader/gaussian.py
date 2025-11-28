@@ -123,11 +123,6 @@ class GaussianTestDataset(Dataset):
         )
 
 def _init_gaussian_centers(savedir, C=DEFAULT_NUM_CLASSES, d=DEFAULT_INPUT_DIM):
-    '''
-    @savedir: Directory to save gaussian centers.
-    @C      : The number of Gaussian centers (classes) to initialize.
-    @d      : The dimensionality of the Gaussian centers.
-    '''
     # Create directory in case it's not created yet
     pathlib.Path(savedir).mkdir(parents=True, exist_ok=True)
     savefile = os.path.join(savedir, f'C{C}_d{d}.pkl')
@@ -139,7 +134,7 @@ def _init_gaussian_centers(savedir, C=DEFAULT_NUM_CLASSES, d=DEFAULT_INPUT_DIM):
 
     centers = []
     for c in range(C):
-        vec = np.random.randint(low=1, high=100, size=(d,))
+        vec = np.random.randint(low=1, high=1000, size=(d,))
         vec = vec / np.linalg.norm(vec, ord=2)
         centers.append(vec)
     centers = np.array(centers)
@@ -150,6 +145,64 @@ def _init_gaussian_centers(savedir, C=DEFAULT_NUM_CLASSES, d=DEFAULT_INPUT_DIM):
         pickle.dump(centers, f)
 
     return centers 
+
+def _generate_maximally_separated_vectors(savedir, C=DEFAULT_NUM_CLASSES, d=DEFAULT_INPUT_DIM, n_iterations=1000, lr=0.1):
+    # Create directory in case it's not created yet
+    pathlib.Path(savedir).mkdir(parents=True, exist_ok=True)
+    savefile = os.path.join(savedir, f'C{C}_d{d}.pkl')
+
+    # Initialize randomly on unit sphere
+    vectors = torch.randn(C, d)
+    vectors = vectors / vectors.norm(dim=1, keepdim=True)
+    vectors.requires_grad = True
+
+    optimizer = torch.optim.Adam([vectors], lr=lr)
+
+    for iteration in range(n_iterations):
+        optimizer.zero_grad()
+
+        # Normalize to unit sphere
+        normalized = vectors / vectors.norm(dim=1, keepdim=True)
+
+        # Compute pairwise distances
+        dists = torch.cdist(normalized, normalized)
+
+        # Mask out diagonal (self-distances)
+        mask = ~torch.eye(C, dtype=bool)
+        dists_valid = dists[mask]
+
+        # Maximize minimum distance (or minimize negative of min distance)
+        # We use soft minimum for differentiability
+        min_dist = -torch.logsumexp(-dists_valid * 10, dim=0) / 10
+
+        # Also add repulsion term to push all pairs apart
+        repulsion = -1.0 / (dists_valid + 1e-6)
+        loss = -min_dist + 0.01 * repulsion.mean()
+
+        loss.backward()
+        optimizer.step()
+
+        if (iteration + 1) % 200 == 0:
+            with torch.no_grad():
+                normalized = vectors / vectors.norm(dim=1, keepdim=True)
+                dists = torch.cdist(normalized, normalized)
+                mask = ~torch.eye(C, dtype=bool)
+                min_d = dists[mask].min().item()
+                mean_d = dists[mask].mean().item()
+                print(f"Iter {iteration+1}: min_dist={min_d:.4f}, mean_dist={mean_d:.4f}")
+
+    # Final normalization
+    with torch.no_grad():
+        vectors = vectors / vectors.norm(dim=1, keepdim=True)
+    centers = vectors.detach()
+
+    # Save the pickle file
+    with open(savefile, 'wb') as f:
+        print(f'Saving gaussian centers to {savefile}')
+        pickle.dump(centers, f)
+
+    return vectors.detach()
+
 
 def _save_data(X, Y, configs, savedir):
     '''
@@ -258,7 +311,7 @@ def generate_gaussian_clusters(N, savedir=None, class_probs=None): # Test ratio 
 
     # Generate Gaussian distributions
     sigmas = [DEFAULT_CLUSTER_STD] * len(class_probs)
-    mus = _init_gaussian_centers(savedir, C=len(class_probs), d=DEFAULT_INPUT_DIM)
+    mus = _generate_maximally_separated_vectors(savedir, C=len(class_probs), d=DEFAULT_INPUT_DIM)
 
     # Generate raw data
     X, Y, configs = _generate_raw_gaussian_clusters(savedir, mus, sigmas, class_probs, N=N)
