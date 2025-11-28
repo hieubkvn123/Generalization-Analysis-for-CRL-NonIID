@@ -87,6 +87,7 @@ def train(args):
     # Load model
     model = get_model(in_dim=INPUT_DIM, out_dim=args['d_dim'], hidden_dim=args['hidden_dim'], L=args['L'])
     model = model.to(model.device)
+    print(model)
 
     # Optimization algorithm
     optimizer = torch.optim.Adam(
@@ -100,14 +101,12 @@ def train(args):
         model.train()
 
         # --- #
-        empirical_risk = 0.0
         print(f'[*] Epoch #[{epoch}/{args["epochs"]}]:')
         with tqdm.tqdm(total=num_train_batches) as pbar:
             total_loss = 0.0
             for i, batch in enumerate(train_dataloader):
                 # Calculate loss
                 weights = batch[3].to(model.device) # / torch.sum(torch.abs(batch[3]))
-                if i == 0: print(weights)
                 y1, y2, y3 = apply_model_to_batch(model, batch, device=model.device)
                 loss = npair_loss(y1, y2, y3) * weights
                 mean_batchwise_loss = torch.sum(loss) / args['batch_size'] 
@@ -117,31 +116,21 @@ def train(args):
                 optimizer.step()
                 optimizer.zero_grad()
 
-                # Update loss for this epoch
-                total_loss += mean_batchwise_loss.item()
-                
                 # Update progress bar
                 pbar.set_postfix({
-                    'train_loss' : f'{mean_batchwise_loss.item():.5f}',
+                    'mean_batchwise_loss' : f'{mean_batchwise_loss.item():.5f}',
                     'batch' : f'#[{i+1}/{num_train_batches}]'
                 })
                 pbar.update(1)
             time.sleep(0.1)
-            empirical_risk = total_loss / num_train_batches
-            print(f'\nAverage train loss : {empirical_risk:.4f}\n------\n')
 
-        if empirical_risk <= TRAIN_LOSS_THRESHOLD:
-            print('[INFO] Train loss target reached, early stopping...')
-            break
-
-        # Evaluation phase
         if epoch % args['eval_every'] == 0:
+            # Evaluation phase
             model.eval()
 
             # --- #
-            print('------\nEvaluation:')
-            population_risk = 0.0
-            total_test_loss = 0.0
+            print('------\nEvaluating population risk')
+            population_risk, total_test_loss = 0.0, 0.0
             with tqdm.tqdm(total=num_test_batches) as pbar:
                 for i, batch in enumerate(test_dataloader):
                     weights = batch[3].to(model.device)
@@ -151,6 +140,24 @@ def train(args):
                     pbar.update(1)
                 population_risk = (1/args['num_test_per_class']) * total_test_loss 
             print(f'Population risk estimated: {population_risk:.4f}')
+
+            # --- #
+            print('------\nEvaluating population risk')
+            empirical_risk, total_train_loss = 0.0, 0.0
+            with tqdm.tqdm(total=len(train_dataloader)) as pbar:
+                for i, batch in enumerate(train_dataloader):
+                    weights = batch[3].to(model.device)
+                    y1, y2, y3 = apply_model_to_batch(model, batch, device=model.device)
+                    loss = npair_loss(y1, y2, y3) * weights
+                    total_train_loss += torch.sum(loss).item()
+                    pbar.update(1)
+                empirical_risk = (1/args['M']) * total_train_loss 
+            print(f'Empirical risk estimated: {empirical_risk:.4f}')
+
+            # --- #
+            if empirical_risk <= TRAIN_LOSS_THRESHOLD:
+                print('[INFO] Train loss target reached, early stopping...')
+                break
 
     # Save result
     if args['outfile']:
@@ -166,8 +173,8 @@ def train(args):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--epochs', type=int, required=False, default=1000, help='Number of training iterations')
-    parser.add_argument('--d_dim', type=int, required=False, default=64, help='Output dimensionality')
-    parser.add_argument('--hidden_dim', type=int, required=False, default=128, help='Hidden dimensionality')
+    parser.add_argument('--d_dim', type=int, required=False, default=128, help='Output dimensionality')
+    parser.add_argument('--hidden_dim', type=int, required=False, default=256, help='Hidden dimensionality')
     parser.add_argument('--k', type=int, required=False, default=3, help='Number of negative samples')
     parser.add_argument('--L', type=int, required=False, default=2, help='Number of layers')
     parser.add_argument('--N', type=int, required=False, default=100000, help='Number of labeled data points')

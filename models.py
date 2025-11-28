@@ -30,15 +30,10 @@ class Net(nn.Module):
         # Create layers
         self.fc_hidden_layers = []
         for _ in range(1, self.L):
-            self.fc_hidden_layers.append(
-                nn.Linear(hidden_dim, hidden_dim, bias=False)
-            )
-            self.fc_hidden_layers.append(
-                nn.BatchNorm1d(hidden_dim)
-            )
-            self.fc_hidden_layers.append(
-                nn.ReLU()    
-            )
+            self.fc_hidden_layers.append( nn.Linear(hidden_dim, hidden_dim, bias=False) )
+            self.fc_hidden_layers.append( nn.BatchNorm1d(hidden_dim) )
+            self.fc_hidden_layers.append( nn.ReLU() )
+            self.fc_hidden_layers.append( nn.Dropout(0.4) )
         self.v = nn.Sequential(
             nn.Linear(in_dim, hidden_dim, bias=False),
             nn.ReLU(), 

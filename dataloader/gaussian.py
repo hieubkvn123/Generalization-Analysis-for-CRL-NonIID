@@ -205,11 +205,6 @@ def _generate_maximally_separated_vectors(savedir, C=DEFAULT_NUM_CLASSES, d=DEFA
 
 
 def _save_data(X, Y, configs, savedir):
-    '''
-    @X      : The input vectors.
-    @Y      : The corresponding labels.
-    @savedir: Save directory.
-    '''
     with open(os.path.join(savedir, 'X.pkl'), 'wb') as f:
         pickle.dump(X, f)
     with open(os.path.join(savedir, 'Y.pkl'), 'wb') as f:
@@ -219,9 +214,6 @@ def _save_data(X, Y, configs, savedir):
     print(f'Data saved to {savedir} successfully')
 
 def _load_data(savedir):
-    '''
-    @savedir: The save directory with X.pkl and Y.pkl files.
-    '''
     X = pickle.load(open(os.path.join(savedir, 'X.pkl'), 'rb'))
     Y = pickle.load(open(os.path.join(savedir, 'Y.pkl'), 'rb'))
     configs = pickle.load(open(os.path.join(savedir, 'configs.pkl'), 'rb'))
@@ -236,7 +228,7 @@ def _data_exists(savedir):
 def _configuration_matches(savedir, configs):
     with open(os.path.join(os.path.join(savedir, 'configs.pkl')), 'rb') as f:
         src_configs = pickle.load(f) 
-        for k, v in src_configs.items():
+        for k, v in configs.items():
             if isinstance(configs[k], float) or isinstance(configs[k], int):
                 if configs[k] != v: 
                     return False
@@ -246,14 +238,7 @@ def _onehot_encode_ints_array(arr):
     n_values = np.max(arr) + 1
     return np.eye(n_values)[arr]
 
-def _generate_raw_gaussian_clusters(savedir, mus, sigmas, class_probs=None, d=None, N=10e5, reinit=False):
-    '''
-    @centers    : Gaussian centers.
-    @class_probs: A list of class probabilities (sums up to 1, length equals number of centers).
-    @C          : The number of Gaussian centers (classes) to initialize.
-    @d          : The dimensionality of the Gaussian centers.
-    @N          : Total number of data points to generate.
-    '''
+def _generate_raw_gaussian_clusters(savedir, class_probs=None, d=None, N=10e5, reinit=False):
     # Generate class distribution if not provided
     if class_probs is not None:
         C = len(class_probs)
@@ -267,9 +252,7 @@ def _generate_raw_gaussian_clusters(savedir, mus, sigmas, class_probs=None, d=No
         d = DEFAULT_INPUT_DIM
 
     # Assemble configurations
-    configs = {'N' : N, 'C' : C, 'd' : d, 
-                'probs' : class_probs,
-                'mu': mus, 'sigma': sigmas}
+    configs = {'N' : N, 'C' : C, 'd' : d, 'probs' : class_probs}
     savedir_data = os.path.join(savedir, f'C{C}_d{d}_N{int(N)}')
     pathlib.Path(savedir_data).mkdir(parents=True, exist_ok=True)
 
@@ -280,6 +263,13 @@ def _generate_raw_gaussian_clusters(savedir, mus, sigmas, class_probs=None, d=No
                 print('Data exists and configurations matches, reloading...')
                 return _load_data(savedir_data)
     print('Data does not exist or configurations mismatches, re-creating data...')
+
+    # Generate Gaussian distributions
+    sigmas = [DEFAULT_CLUSTER_STD] * len(class_probs)
+    mus = _generate_maximally_separated_vectors(savedir, C=len(class_probs), d=DEFAULT_INPUT_DIM)
+
+    # Store in configs
+    configs['mu'], configs['sigma'] = mus, sigmas
 
     # Generate Gaussian centers
     savedir_center = os.path.join(savedir, 'gaussian_centers')
@@ -309,12 +299,8 @@ def generate_gaussian_clusters(N, savedir=None, class_probs=None): # Test ratio 
     if savedir is None:
         savedir = DEFAULT_SAVE_FOLDER
 
-    # Generate Gaussian distributions
-    sigmas = [DEFAULT_CLUSTER_STD] * len(class_probs)
-    mus = _generate_maximally_separated_vectors(savedir, C=len(class_probs), d=DEFAULT_INPUT_DIM)
-
     # Generate raw data
-    X, Y, configs = _generate_raw_gaussian_clusters(savedir, mus, sigmas, class_probs, N=N)
+    X, Y, configs = _generate_raw_gaussian_clusters(savedir, class_probs, N=N)
     train_dataset = GaussianDataset(X, Y)
     return train_dataset, configs 
 
