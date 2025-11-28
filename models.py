@@ -72,3 +72,30 @@ def logistic_loss(y, y_positive, y_negatives):
         )
     loss = torch.log(1 + h_exp_sum)
     return loss
+
+
+def npair_loss(anchors, positives, negatives_list):
+    B, d = anchors.shape
+    k = len(negatives_list)
+
+    # Compute anchor-positive similarity: (B,)
+    anchor_pos_sim = (anchors * positives).sum(dim=1)
+
+    # Compute anchor-negative similarities for all negatives
+    # Stack negatives: (k, B, d) -> (B, k, d)
+    negatives = torch.stack(negatives_list, dim=0).transpose(0, 1)  # (B, k, d)
+
+    # Compute similarities: (B, k)
+    anchor_neg_sim = torch.bmm(
+        negatives,  # (B, k, d)
+        anchors.unsqueeze(2)  # (B, d, 1)
+    ).squeeze(2)  # (B, k)
+
+    # Compute loss: log(1 + sum_i exp(a·n_i - a·p))
+    # For numerical stability, factor out the max
+    differences = anchor_neg_sim - anchor_pos_sim.unsqueeze(1)  # (B, k)
+
+    # Loss = log(1 + sum(exp(differences)))
+    loss = torch.log1p(torch.exp(differences).sum(dim=1))  # (B,)
+
+    return loss.mean()

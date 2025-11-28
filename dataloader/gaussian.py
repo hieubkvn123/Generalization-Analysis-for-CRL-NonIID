@@ -2,7 +2,6 @@ import os
 import pickle
 import pathlib
 import numpy as np
-from sklearn.model_selection import train_test_split
 
 import torch
 from torchvision import transforms

@@ -14,7 +14,7 @@ from dataloader.main import get_dataloader, default_transform
 from dataloader.common import apply_model_to_batch, save_json_dict
 from dataloader.common import UnsupervisedDatasetWrapper
 from dataloader.gaussian import GaussianTestDataset
-from models import get_model, logistic_loss
+from models import get_model, npair_loss
 
 # Visualization configs
 fontconfig = {
@@ -106,10 +106,10 @@ def train(args):
             total_loss = 0.0
             for i, batch in enumerate(train_dataloader):
                 # Calculate loss
-                weights = batch[3] # / torch.sum(torch.abs(batch[3]))
+                weights = batch[3].to(model.device) # / torch.sum(torch.abs(batch[3]))
                 if i == 0: print(weights)
                 y1, y2, y3 = apply_model_to_batch(model, batch, device=model.device)
-                loss = logistic_loss(y1, y2, y3) * weights
+                loss = npair_loss(y1, y2, y3) * weights
                 mean_batchwise_loss = torch.sum(loss) / args['batch_size'] 
                     
                 # Back propagation
@@ -127,7 +127,7 @@ def train(args):
                 })
                 pbar.update(1)
             time.sleep(0.1)
-            empirical_risk = total_loss / (num_train_batches * args['batch_size'])
+            empirical_risk = total_loss / num_train_batches
             print(f'\nAverage train loss : {empirical_risk:.4f}\n------\n')
 
         if empirical_risk <= TRAIN_LOSS_THRESHOLD:
@@ -144,9 +144,9 @@ def train(args):
             total_test_loss = 0.0
             with tqdm.tqdm(total=num_test_batches) as pbar:
                 for i, batch in enumerate(test_dataloader):
-                    weights = batch[3]
+                    weights = batch[3].to(model.device)
                     y1, y2, y3 = apply_model_to_batch(model, batch, device=model.device)
-                    loss = logistic_loss(y1, y2, y3) * weights
+                    loss = npair_loss(y1, y2, y3) * weights
                     total_test_loss += torch.sum(loss).item()
                     pbar.update(1)
                 population_risk = (1/args['num_test_per_class']) * total_test_loss 
@@ -178,7 +178,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, required=False, default=64, help='Batch size')
     parser.add_argument('--num_batches', type=int, required=False, default=1000, help='Number of batches')
     parser.add_argument('--num_test_per_class', type=int, required=False, default=100, help='Number of testing data points per class')
-    parser.add_argument('--eval_every', type=int, required=False, default=10, help='Evaluation interval')
+    parser.add_argument('--eval_every', type=int, required=False, default=5, help='Evaluation interval')
     parser.add_argument('--regime', type=str, required=False, default='subsample', help='Sampling regime - all tuples or only a subset')
     parser.add_argument('--outfile', type=str, required=False, default=None, help='Output file for experiment results')
     args = vars(parser.parse_args())
