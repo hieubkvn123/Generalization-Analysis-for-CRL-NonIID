@@ -1,3 +1,4 @@
+import math
 import torch
 import pprint
 import itertools
@@ -28,15 +29,22 @@ def apply_model_to_batch(model, batch, device=None):
     return y1, y2, y3
 
 class UnsupervisedDatasetWrapper(object):
-    def __init__(self, dataset, k, n, regime='subsample'):
+    def __init__(self, dataset, M, k, regime='subsample'):
         # Just to make sure
         super().__init__()
-        assert regime in ['subsample', 'all'], f'Invalid regime {regime}'
+        assert regime in ['subsample', 'weighted_subsample'], f'Invalid regime {regime}'
 
         # Store configurations
-        self.k = k
-        self.n = n
         self.dataset = dataset
+        self.k = k
+        self.M = M
+        self.N = len(self.dataset)
+        self.Ns = self.dataset.Ns
+        self.rho_hat = self.dataset.rho_hat
+        self.all_labels = self.dataset.all_labels
+        self.tau_hat = self._calculate_tau_hat()
+        self.default_weight = 1/(1 - self.tau_hat)
+        self.collided_weights = self._calculate_collided_weights()
         
         # Map labels to instance indices
         self.label_to_indices = defaultdict(list)
@@ -45,54 +53,88 @@ class UnsupervisedDatasetWrapper(object):
         self.label_to_indices = {label: np.array(indices) for label, indices in self.label_to_indices.items()}
 
         # Get contrastive tuples
-        self.all_labels = list(self.label_to_indices.keys())
         if regime == 'subsample':
-            self.all_tuples = self._subsample_data_tuples(n)
+            self.all_tuples = self._subsample(self.M)
         else:
-            self.all_tuples = self._generate_all_data_tuples()
+            self.all_tuples = self._weighted_subsample(self.M)
 
-    def get_dataset(self):
-        return UnsupervisedDataset(self.dataset, self.all_tuples)
+    def _calculate_tau_hat(self):
+        non_col_prob = 0.0
+        for _class, rho_r in self.rho_hat.items():
+            non_col_prob += rho_r * ((1 - rho_r)**self.k)
+        return 1 - non_col_prob
 
-    # Get all possible tuples
-    def _generate_all_data_tuples(self):
-        # Initialize
-        all_tuples = set()
+    def _calculate_omegas(self):
+        omegas = {}
+        for _class, N_r in self.Ns.items():
+            omegas[_class] = math.comb(N_r, 2) * math.comb(self.N - 2, self.k)
+        return omegas
+    
+    def _calculate_lambdas(self):
+        lambdas = {}
+        for _class, N_r in self.Ns.items():
+            lambdas[_class] = math.comb(N_r, 3) * math.comb(self.N - 3, self.k - 1)
+        return lambdas
 
-        # For all class
-        for label in list(self.label_to_indices.keys()):
-            positive_samples = set(self.label_to_indices[label])
-            negative_samples = set(np.concatenate([v for k, v in self.label_to_indices.items() if k != label]))
+    def _calculate_collided_weights(self):
+        weights = {}
+        omegas = self._calculate_omegas()
+        lambdas = self._calculate_lambdas()
+        for r in list(self.all_labels):
+            weights[r] = self.default_weight - (omegas[r]/lambdas[r])*(self.tau_hat / (1 - self.tau_hat)) 
+        return weights
 
-            # Get all permutations from positive and combinations from negative
-            permutations_pos = set(itertools.permutations(positive_samples, 2))
-            combinations_neg = set(itertools.combinations(negative_samples, self.k))
-
-            # Take the cartesian product
-            cartesian = set(itertools.product(permutations_pos, combinations_neg))
-            cartesian_flatten = set([p + c for p, c in cartesian])
-            all_tuples = all_tuples.union(cartesian_flatten)
-        return list(all_tuples)
-
-    # Sample from the original dataset n tuples of k+2 vectors
-    def _subsample_data_tuples(self, n):
+    # Sample from the original dataset M tuples of k+2 vectors
+    def _subsample(self, M):
         all_tuples = []
-        for _ in range(n):
-            # Get a random index from original dataset
-            index = np.random.randint(0, len(self.dataset))
-            _, label = self.dataset[index]
+        classes, p = zip(*self.rho_hat.items())
+        for _ in range(M):
+            # Choose a class according to rho-hat
+            r = np.random.choice(classes, p=p) 
 
-            # Get positive index
-            positive_index = np.random.choice(self.label_to_indices[label])
+            # Choose the anchor-positive pair
+            index, positive_index = np.random.choice(self.label_to_indices[r], size=2, replace=False)
             current_instance = [index, positive_index]
 
-            # Get negative indices
-            negative_labels = np.random.choice([l for l in self.all_labels if l != label], self.k, replace=True)
+            # Get negative indices strictly from different classes
+            negative_labels = np.random.choice([l for l in self.all_labels if l != r], self.k, replace=True)
             for neg_label in negative_labels:
                 negative_index = np.random.choice(self.label_to_indices[neg_label])
                 current_instance.append(negative_index)
-            all_tuples.append(current_instance)
+            all_tuples.append({'tuple': current_instance, 'weight': 1.0})
         return all_tuples
+
+    def _weighted_subsample(self, M):
+        all_tuples = []
+        classes, p = zip(*self.rho_hat.items())
+        for _ in range(M):
+           # Set to default weight
+            weight = self.default_weight
+
+            # Choose a class according to rho-hat
+            r = np.random.choice(classes, p=p) 
+            rho_hat_r = self.rho_hat[r]
+
+            # Choose the anchor-positive pair
+            index, positive_index = np.random.choice(self.label_to_indices[r], size=2, replace=False)
+            current_instance = [index, positive_index]
+
+            # Get negative indices from all classes
+            negative_labels = np.random.choice(classes, p=p, size=self.k, replace=True)
+
+            # Check collision
+            if r in negative_labels:
+                weight = self.collided_weights[r]
+            weight = weight * rho_hat_r
+
+            for neg_label in negative_labels:
+                negative_index = np.random.choice(self.label_to_indices[neg_label])
+                current_instance.append(negative_index)
+            all_tuples.append({'tuple': current_instance, 'weight': weight})
+        return all_tuples
+
+    def get_dataset(self):
+        return UnsupervisedDataset(self.dataset, self.all_tuples)
 
 # Tuple data loader definition
 class UnsupervisedDataset(Dataset):
@@ -106,7 +148,8 @@ class UnsupervisedDataset(Dataset):
         
     def __getitem__(self, index):
         # Get tuple of instance indices
-        current_instance = self.all_tuples[index]
+        weight = self.all_tuples[index]['weight']
+        current_instance = self.all_tuples[index]['tuple']
         anchor_idx, positive_idx = current_instance[0], current_instance[1]
 
         # Get positive + anchor instance
@@ -125,7 +168,7 @@ class UnsupervisedDataset(Dataset):
             if len(x_negative.shape) >= 2:
                 x_negative = x_negative.view(-1)
             negative_samples.append(x_negative)
-        return (x, x_positive, negative_samples)
+        return (x, x_positive, negative_samples, weight)
 
     def __len__(self):
         return len(self.all_tuples)
