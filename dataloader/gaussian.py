@@ -9,7 +9,7 @@ from torch.utils.data import random_split
 from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler
 
 # Some global constants 
-DEFAULT_CLUSTER_STD = 0.1
+DEFAULT_CLUSTER_STD = 0.01
 DEFAULT_NUM_CLASSES = 20
 DEFAULT_INPUT_DIM   = 256
 DEFAULT_SAVE_FOLDER = 'gaussian'
@@ -292,7 +292,7 @@ def _generate_raw_gaussian_clusters(savedir, class_probs=None, d=None, N=10e5, r
     return X, Y, configs
 
 # Get Gaussian data
-def generate_gaussian_clusters(N, savedir=None, class_probs=None): # Test ratio w.r.t training dataset
+def generate_gaussian_clusters(N, savedir=None, class_probs=None, reinit=False): 
     # Generate class probabilities
     if class_probs is None:
         class_probs = DEFAULT_CLASS_PROBS
@@ -300,7 +300,7 @@ def generate_gaussian_clusters(N, savedir=None, class_probs=None): # Test ratio 
         savedir = DEFAULT_SAVE_FOLDER
 
     # Generate raw data
-    X, Y, configs = _generate_raw_gaussian_clusters(savedir, class_probs, N=N)
+    X, Y, configs = _generate_raw_gaussian_clusters(savedir, class_probs, N=N, reinit=reinit)
     train_dataset = GaussianDataset(X, Y)
     return train_dataset, configs 
 

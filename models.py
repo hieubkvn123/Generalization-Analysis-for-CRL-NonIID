@@ -3,8 +3,9 @@ import torch.nn as nn
 
 import tqdm
 import numpy as np
-
 from dataloader.common import get_default_device, apply_model_to_batch
+
+MAX_LOSS = 10.0
 
 # Network definition
 class Net(nn.Module):
@@ -31,7 +32,7 @@ class Net(nn.Module):
         self.fc_hidden_layers = []
         for _ in range(1, self.L):
             self.fc_hidden_layers.append( nn.Linear(hidden_dim, hidden_dim, bias=False) )
-            self.fc_hidden_layers.append( nn.BatchNorm1d(hidden_dim) )
+            # self.fc_hidden_layers.append( nn.BatchNorm1d(hidden_dim) )
             self.fc_hidden_layers.append( nn.ReLU() )
             self.fc_hidden_layers.append( nn.Dropout(0.4) )
         self.v = nn.Sequential(
@@ -69,7 +70,7 @@ def logistic_loss(y, y_positive, y_negatives):
     return loss
 
 
-def npair_loss(anchors, positives, negatives_list):
+def npair_loss(anchors, positives, negatives_list, weights=None):
     B, d = anchors.shape
     k = len(negatives_list)
 
@@ -92,5 +93,8 @@ def npair_loss(anchors, positives, negatives_list):
 
     # Loss = log(1 + sum(exp(differences)))
     loss = torch.log1p(torch.exp(differences).sum(dim=1))  # (B,)
+    # loss = torch.clamp(loss, max=MAX_LOSS)
+    if weights is not None:
+        loss = weights * loss
 
-    return loss.mean()
+    return loss

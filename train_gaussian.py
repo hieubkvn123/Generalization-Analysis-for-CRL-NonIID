@@ -3,6 +3,7 @@ import os
 import time
 import tqdm
 import torch
+import random
 import pathlib
 import numpy as np
 import pandas as pd
@@ -14,7 +15,7 @@ from dataloader.main import get_dataloader, default_transform
 from dataloader.common import apply_model_to_batch, save_json_dict
 from dataloader.common import UnsupervisedDatasetWrapper
 from dataloader.gaussian import GaussianTestDataset
-from models import get_model, npair_loss
+from models import get_model, npair_loss, logistic_loss
 
 # Visualization configs
 fontconfig = {
@@ -23,6 +24,16 @@ fontconfig = {
 }
 plt.style.use('seaborn-v0_8-paper')
 plt.rcParams['text.usetex'] = True
+
+# Fixed random seed
+seed = 1337
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
+torch.cuda.manual_seed_all(seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 # Constants for training
 INPUT_DIM = 256
@@ -69,8 +80,9 @@ def train(args):
         print('GPU is available')
 
     # Generate training dataset 
-    class_probs = generate_class_probs(args['R'], args['rho_min'])
-    train_data, configs = generate_gaussian_clusters(args['N'], class_probs=class_probs)
+    # class_probs = generate_class_probs(args['R'], args['rho_min'])
+    class_probs = np.array([args['rho_star']] + [(1-args['rho_star'])/(args['R'] - 1)] * (args['R'] - 1))
+    train_data, configs = generate_gaussian_clusters(args['N'], class_probs=class_probs, reinit=True)
     train_data = UnsupervisedDatasetWrapper(train_data, k=args['k'], M=args['M'], regime=args['regime']).get_dataset()
     train_dataloader = DataLoader(train_data, batch_size=args['batch_size'], shuffle=False)
 
@@ -107,14 +119,12 @@ def train(args):
                 # Calculate loss
                 weights = batch[3].to(model.device) # / torch.sum(torch.abs(batch[3]))
                 y1, y2, y3 = apply_model_to_batch(model, batch, device=model.device)
-                if i == 0: print(weights)
-                loss = npair_loss(y1, y2, y3) * weights
-                mean_batchwise_loss = torch.sum(loss) / args['batch_size'] 
+                mean_batchwise_loss = npair_loss(y1, y2, y3, weights=weights).sum()
                     
                 # Back propagation
+                optimizer.zero_grad()
                 mean_batchwise_loss.backward()
                 optimizer.step()
-                optimizer.zero_grad()
 
                 # Update progress bar
                 pbar.set_postfix({
@@ -133,26 +143,24 @@ def train(args):
             population_risk, total_test_loss = 0.0, 0.0
             with tqdm.tqdm(total=num_test_batches) as pbar:
                 for i, batch in enumerate(test_dataloader):
-                    weights = batch[3].to(model.device)
                     y1, y2, y3 = apply_model_to_batch(model, batch, device=model.device)
-                    loss = npair_loss(y1, y2, y3) * weights
-                    total_test_loss += torch.sum(loss).item()
+                    loss = npair_loss(y1, y2, y3).sum()
+                    total_test_loss += loss.item() 
                     pbar.update(1)
-                population_risk = (1/args['num_test_per_class']) * total_test_loss 
+                population_risk = (1/(args['num_test_per_class'] * args['R'])) * total_test_loss 
             print(f'Population risk estimated: {population_risk:.4f}')
 
             # --- #
-            print('------\nEvaluating population risk')
+            print('------\nEvaluating empirical risk')
             empirical_risk, total_train_loss = 0.0, 0.0
             with tqdm.tqdm(total=len(train_dataloader)) as pbar:
                 for i, batch in enumerate(train_dataloader):
-                    weights = batch[3].to(model.device)
                     y1, y2, y3 = apply_model_to_batch(model, batch, device=model.device)
-                    loss = npair_loss(y1, y2, y3) * weights
-                    total_train_loss += torch.sum(loss).item()
+                    loss = npair_loss(y1, y2, y3).sum()
+                    total_train_loss += loss.item()
                     pbar.update(1)
                 empirical_risk = (1/args['M']) * total_train_loss 
-            print(f'Empirical risk estimated: {empirical_risk:.4f}')
+            print(f'Subsampled-empirical risk estimated: {empirical_risk:.4f}')
 
             # --- #
             if empirical_risk <= TRAIN_LOSS_THRESHOLD:
@@ -181,8 +189,8 @@ if __name__ == '__main__':
     parser.add_argument('--L', type=int, required=False, default=2, help='Number of layers')
     parser.add_argument('--N', type=int, required=False, default=100000, help='Number of labeled data points')
     parser.add_argument('--M', type=int, required=False, default=10000, help='Number of subsampled tuples')
-    parser.add_argument('--R', type=int, required=False, default=1000, help='Number of classes')
-    parser.add_argument('--rho_min', type=float, required=False, default=0.0001, help='Minimum class probabilities')
+    parser.add_argument('--R', type=int, required=False, default=200, help='Number of classes')
+    parser.add_argument('--rho_star', type=float, required=False, default=0.5, help='Dominant class probability')
 
     parser.add_argument('--batch_size', type=int, required=False, default=64, help='Batch size')
     parser.add_argument('--num_batches', type=int, required=False, default=1000, help='Number of batches')
