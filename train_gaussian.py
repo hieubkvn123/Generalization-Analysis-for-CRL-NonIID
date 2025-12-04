@@ -107,6 +107,7 @@ def train(args):
                 # Calculate loss
                 weights = batch[3].to(model.device) # / torch.sum(torch.abs(batch[3]))
                 y1, y2, y3 = apply_model_to_batch(model, batch, device=model.device)
+                if i == 0: print(weights)
                 loss = npair_loss(y1, y2, y3) * weights
                 mean_batchwise_loss = torch.sum(loss) / args['batch_size'] 
                     
