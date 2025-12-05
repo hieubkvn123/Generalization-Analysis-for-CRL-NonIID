@@ -18,7 +18,7 @@ class ContrastiveConfig:
     n_classes: int = 100
     k_negatives: int = 5
     temperature: float = 0.5
-    m_incomplete: int = 64 # tuples per epoch
+    m_incomplete: int = 100  # tuples per epoch
     test_size: int = 1000  # test samples
 
 def set_seed(seed=42):
@@ -33,8 +33,9 @@ def set_seed(seed=42):
 # -----------------------------------------------------
 def create_imbalanced_dataset(config, seed=42):
     # Get class sizes
-    dominant_class_size = int(0.6 * config.n_samples)
+    dominant_class_size = int(0.8 * config.n_samples)
     class_sizes = [dominant_class_size] + [(config.n_samples - dominant_class_size) // (config.n_classes - 1)] * (config.n_classes - 1)
+    print(class_sizes)
     
     # Generate data for each class
     X_list = []
@@ -181,11 +182,12 @@ def incomplete_u_statistics_weighted(X, labels, class_probs, encoder, config, de
 
         loss = contrastive_loss(z_anchor, z_pos, z_negs, config.temperature)
         weight = compute_weights(t, labels, tau_hat, class_probs[r], config.k_negatives)
+        print(r, weight)
 
         total_loss += weight * loss
         total_weight += abs(weight)
 
-    return total_loss / total_weight
+    return total_loss / m # total_weight
 
 # -----------------------------------------------------
 # Incomplete U-statistics (UNWEIGHTED - baseline)
@@ -324,7 +326,7 @@ def train_contrastive_model(X_train_np, labels_train_np, centers,
 
     set_seed()
     encoder = SimpleEncoder(config.n_features, output_dim=16).to(device)
-    optimizer = torch.optim.Adam(encoder.parameters(), lr=1e-2, amsgrad=True)
+    optimizer = torch.optim.Adam(encoder.parameters(), lr=1e-3)
     
     loss_history = []
     test_loss_history = []
@@ -390,7 +392,7 @@ print("EXPERIMENT 1: WEIGHTED U-STATISTICS")
 print("="*60)
 results_weighted = train_contrastive_model(
     X_train, labels_train, centers,
-    config, n_epochs=1000, use_weighting=True
+    config, n_epochs=200, use_weighting=True
 )
 
 # Train with UNWEIGHTED approach
@@ -399,7 +401,7 @@ print("EXPERIMENT 2: UNWEIGHTED U-STATISTICS (Baseline)")
 print("="*60)
 results_unweighted = train_contrastive_model(
     X_train, labels_train, centers, 
-    config, n_epochs=1000, use_weighting=False
+    config, n_epochs=200, use_weighting=False
 )
 
 def pca_numpy(X, n_components=2):
