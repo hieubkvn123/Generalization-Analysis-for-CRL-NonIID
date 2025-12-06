@@ -601,7 +601,7 @@ def visualize_rare_class_embeddings(X_test, labels_test, encoder_weighted, encod
                  f'(X markers = class centroids)', 
                  fontsize=16, fontweight='bold')
     plt.tight_layout()
-    plt.savefig('rare_class_embeddings.pdf', dpi=150, bbox_inches='tight')
+    plt.savefig('results/rare_class_embeddings.pdf', dpi=150, bbox_inches='tight')
     plt.show()
     
     # Print comparison
@@ -727,7 +727,7 @@ def visualize_comparison(results_weighted, results_unweighted, class_sizes):
     plt.suptitle('Weighted vs Unweighted Incomplete U-Statistics (Batched)',
                  fontsize=16, fontweight='bold', y=0.98)
     
-    plt.savefig('comparison_results_batched.pdf', dpi=150, bbox_inches='tight')
+    plt.savefig('results/comparison_results_batched.pdf', dpi=150, bbox_inches='tight')
     plt.show()
     
     print("\n" + "="*60)
@@ -830,8 +830,8 @@ def main():
     print("ALL EXPERIMENTS COMPLETED!")
     print("="*60)
     print("\nGenerated files:")
-    print("  • comparison_results_batched.pdf")
-    print("  • rare_class_embeddings.pdf")
+    print("  - results/comparison_results_batched.pdf")
+    print("  - results/rare_class_embeddings.pdf")
     print("\n" + "="*60)
 
 if __name__ == "__main__":
