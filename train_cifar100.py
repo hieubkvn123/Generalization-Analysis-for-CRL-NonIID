@@ -8,7 +8,6 @@ import time
 import random
 import matplotlib.pyplot as plt
 from torchvision import datasets, transforms
-from torchvision.models import resnet18, ResNet18_Weights
 
 # -----------------------------------------------------
 # Configuration
@@ -18,32 +17,75 @@ class ContrastiveConfig:
     n_samples: int = 10000  # Total samples to use from CIFAR100
     n_features: int = 512 # ResNet18 feature dimension
     n_classes: int = 100
-    k_negatives: int = 5
+    k_negatives: int = 20
     temperature: float = 0.5
     batch_size: int = 64  # Reduced for image processing
     m_incomplete: int = 3000  # sub-sampled tuples 
     test_size: int = 5000  # test samples
 
 # -----------------------------------------------------
-# ResNet18 Feature Extractor (pretrained)
+# Feature Extractor 
 # -----------------------------------------------------
-class ResNet18Features(nn.Module):
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class CIFARFeatureExtractor(nn.Module):
+    """
+    Simple CNN feature extractor for CIFAR images.
+    Input:  (B, 3, 32, 32)
+    Output: (B, 512)
+    """
     def __init__(self):
         super().__init__()
-        import torchvision.models as models
-        resnet = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
-        # Remove the final FC layer
-        self.features = nn.Sequential(*list(resnet.children())[:-1])
-        
-        # Freeze feature extractor
-        for param in self.features.parameters():
-            param.requires_grad = False
-    
+
+        self.conv = nn.Sequential(
+            # Block 1: 32×32 → 16×16
+            nn.Conv2d(3, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2)
+        )
+
+        # Final linear projection to enforce exactly 512 features.
+        self.fc = nn.Linear(64 * 16 * 16, 512)
+
     def forward(self, x):
-        with torch.no_grad():
-            x = self.features(x)
-            x = x.view(x.size(0), -1)
-        return x
+        x = self.conv(x)
+        x = x.view(x.size(0), -1)
+        return self.fc(x)
+
+# -----------------------------------------------------
+# Simple encoder (same as original)
+# -----------------------------------------------------
+class SimpleEncoder(nn.Module):
+    def __init__(self, input_dim, hidden_dim=128, output_dim=64):
+        super().__init__()
+        self.features = CIFARFeatureExtractor() 
+        self.linear1 = nn.Linear(input_dim, hidden_dim, bias=False)
+        self.bn1 = nn.BatchNorm1d(hidden_dim)
+        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
+        self.bn2 = nn.BatchNorm1d(hidden_dim)
+        self.linear3 = nn.Linear(hidden_dim, output_dim)
+        nn.init.normal_(self.linear1.weight, std=0.01)
+        nn.init.normal_(self.linear2.weight, std=0.01)
+        nn.init.normal_(self.linear3.weight, std=0.01)
+
+    def forward(self, x):
+        # Extract Features
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+
+        # Pass through MLP
+        z = F.relu(self.linear1(x))
+        z = self.bn1(z)
+        z = F.relu(self.linear2(z))
+        z = self.bn2(z)
+        z = self.linear3(z)
+        return F.normalize(z, dim=1)
 
 # -----------------------------------------------------
 # Load and subsample CIFAR100
@@ -99,7 +141,7 @@ def load_cifar100_imbalanced(config, seed=42):
     remaining = n - class_sizes[0]
     
     # Exponentially decreasing for remaining classes
-    weights = np.exp(-0.05 * np.arange(1, n_classes))
+    weights = np.exp(-0.005 * np.arange(1, n_classes))
     weights = weights / weights.sum()
     
     for i in range(1, n_classes):
@@ -176,28 +218,6 @@ def extract_features(images, feature_extractor, device, batch_size=128):
     
     return torch.cat(features, dim=0)
 
-# -----------------------------------------------------
-# Simple encoder (same as original)
-# -----------------------------------------------------
-class SimpleEncoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim=128, output_dim=64):
-        super().__init__()
-        self.linear1 = nn.Linear(input_dim, hidden_dim, bias=False)
-        self.bn1 = nn.BatchNorm1d(hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
-        self.bn2 = nn.BatchNorm1d(hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, output_dim)
-        nn.init.normal_(self.linear1.weight, std=0.01)
-        nn.init.normal_(self.linear2.weight, std=0.01)
-        nn.init.normal_(self.linear3.weight, std=0.01)
-
-    def forward(self, x):
-        z = F.relu(self.linear1(x))
-        z = self.bn1(z)
-        z = F.relu(self.linear2(z))
-        z = self.bn2(z)
-        z = self.linear3(z)
-        return F.normalize(z, dim=1)
 
 # -----------------------------------------------------
 # Contrastive Tuple Dataset
@@ -459,8 +479,8 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test,
             z_anchors = encoder(anchors)
             z_positives = encoder(positives)
             
-            batch_size, k, d = negatives.shape
-            z_negatives = encoder(negatives.view(batch_size * k, -1))
+            batch_size, k, C, H, W = negatives.shape
+            z_negatives = encoder(negatives.view(batch_size * k, C, H, W))
             z_negatives = z_negatives.view(batch_size, k, -1)
             
             losses = batched_contrastive_loss(
@@ -675,27 +695,13 @@ def main():
     print("-"*60)
     X_train_img, labels_train, X_test_img, labels_test, class_sizes = load_cifar100_imbalanced(config)
     
-    # Extract features using ResNet18
-    print("\n" + "-"*60)
-    print("EXTRACTING FEATURES WITH RESNET18")
-    print("-"*60)
-    feature_extractor = ResNet18Features().to(device)
-    
-    print("Extracting training features...")
-    X_train = extract_features(X_train_img, feature_extractor, device)
-    print(f"Training features shape: {X_train.shape}")
-    
-    print("Extracting test features...")
-    X_test = extract_features(X_test_img, feature_extractor, device)
-    print(f"Test features shape: {X_test.shape}")
-    
     # Train UNWEIGHTED
     print("\n" + "="*60)
     print("EXPERIMENT 2: UNWEIGHTED U-STATISTICS")
     print("="*60)
     start_time = time.time()
     results_unweighted = train_contrastive_model(
-        X_train, labels_train, X_test, labels_test,
+        X_train_img, labels_train, X_test_img, labels_test,
         config, n_epochs=300, use_weighting=False, avoid_collision=True
     )
     unweighted_time = time.time() - start_time
@@ -708,7 +714,7 @@ def main():
     print("="*60)
     start_time = time.time()
     results_weighted = train_contrastive_model(
-        X_train, labels_train, X_test, labels_test,
+        X_train_img, labels_train, X_test_img, labels_test,
         config, n_epochs=300, use_weighting=True, avoid_collision=False
     )
     weighted_time = time.time() - start_time
