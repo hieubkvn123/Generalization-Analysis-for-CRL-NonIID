@@ -409,6 +409,7 @@ def train_contrastive_model(X_train_np, labels_train_np, X_test_np, labels_test_
         num_workers=0  # Use 0 for CUDA tensors
     )
     
+    best_model, best_loss = None, np.inf
     for epoch in range(n_epochs):
         start = time.time()
         
@@ -449,6 +450,10 @@ def train_contrastive_model(X_train_np, labels_train_np, X_test_np, labels_test_
         avg_epoch_loss = epoch_loss / num_batches
         loss_history.append(avg_epoch_loss)
         elapsed = time.time() - start
+        if avg_epoch_loss < best_loss:
+            best_model = encoder
+            best_loss = avg_epoch_loss
+            print(f' - Update model at epoch {epoch}, new best = {best_loss:.5f}')
         
         # Evaluate on test set (rarest classes) every 20 epochs
         if (epoch + 1) % 20 == 0:
@@ -462,7 +467,7 @@ def train_contrastive_model(X_train_np, labels_train_np, X_test_np, labels_test_
     # Final evaluation on rarest classes
     final_test_losses = evaluate_on_classes(X_test, labels_test, encoder, config, device, rarest_classes)
     
-    return encoder, loss_history, test_loss_history, final_test_losses, rarest_classes
+    return best_model, loss_history, test_loss_history, final_test_losses, rarest_classes
 
 # -----------------------------------------------------
 # PCA Visualization of Rare Classes
@@ -535,11 +540,9 @@ def visualize_rare_class_embeddings(X_test, labels_test, encoder_weighted, encod
             ax1.scatter(centroid[0], centroid[1], c=[class_colors[c]], 
                        marker='X', s=300, edgecolors='black', linewidth=2)
     
-    ax1.set_xlabel('PC1 (Weighted)', fontsize=12, fontweight='bold')
-    ax1.set_ylabel('PC2 (Weighted)', fontsize=12, fontweight='bold')
-    ax1.set_title('Weighted U-Statistics: Rare Class Embeddings', 
-                  fontsize=14, fontweight='bold')
-    ax1.legend(loc='best', fontsize=9)
+    ax1.set_xlabel('PC1', fontsize=16, fontweight='bold')
+    ax1.set_ylabel('PC2', fontsize=16, fontweight='bold')
+    ax1.legend(loc='best', fontsize=16)
     ax1.grid(True, alpha=0.3)
     
     # Compute intra-class compactness for weighted
@@ -567,11 +570,9 @@ def visualize_rare_class_embeddings(X_test, labels_test, encoder_weighted, encod
             ax2.scatter(centroid[0], centroid[1], c=[class_colors[c]], 
                        marker='X', s=300, edgecolors='black', linewidth=2)
     
-    ax2.set_xlabel('PC1 (Unweighted)', fontsize=12, fontweight='bold')
-    ax2.set_ylabel('PC2 (Unweighted)', fontsize=12, fontweight='bold')
-    ax2.set_title('Unweighted U-Statistics: Rare Class Embeddings', 
-                  fontsize=14, fontweight='bold')
-    ax2.legend(loc='best', fontsize=9)
+    ax2.set_xlabel('PC1', fontsize=16, fontweight='bold')
+    ax2.set_ylabel('PC2', fontsize=16, fontweight='bold')
+    ax2.legend(loc='best', fontsize=16)
     ax2.grid(True, alpha=0.3)
     
     # Compute intra-class compactness for unweighted
@@ -585,21 +586,13 @@ def visualize_rare_class_embeddings(X_test, labels_test, encoder_weighted, encod
             intra_dist_uw.append(dists.mean())
     avg_intra_uw = np.mean(intra_dist_uw) if intra_dist_uw else 0
     
-    # Add text with metrics
-    metrics_text_w = f'Avg intra-class dist: {avg_intra_w:.3f}'
-    metrics_text_uw = f'Avg intra-class dist: {avg_intra_uw:.3f}'
-    
-    ax1.text(0.02, 0.98, metrics_text_w, transform=ax1.transAxes,
-            fontsize=11, verticalalignment='top',
-            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-    
-    ax2.text(0.02, 0.98, metrics_text_uw, transform=ax2.transAxes,
-            fontsize=11, verticalalignment='top',
-            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-    
-    plt.suptitle('PCA Visualization: Rare Class Embeddings Comparison\n' +
-                 f'(X markers = class centroids)', 
-                 fontsize=16, fontweight='bold')
+    # Set title 
+    hl = 'hl'
+    ax1.set_title(f'$U_N$: Rare Class Embeddings (Avg Intra-dist={avg_intra_w:.3f})', 
+                  fontsize=16, fontweight='bold')
+    ax2.set_title(f'$U_N^{hl}$: Rare Class Embeddings (Avg Intra-dist={avg_intra_uw:.3f})', 
+                  fontsize=16, fontweight='bold')
+
     plt.tight_layout()
     plt.savefig('results/rare_class_embeddings.pdf', dpi=150, bbox_inches='tight')
     plt.show()
@@ -648,7 +641,7 @@ def visualize_comparison(results_weighted, results_unweighted, class_sizes):
     ax.set_ylabel('Final Test Loss', fontsize=16)
     ax.set_xticks(x_pos)
     ax.set_xticklabels([f'C{c}' for c in rarest])
-    ax.legend(fontsize=10)
+    ax.legend(fontsize=16)
     ax.grid(True, alpha=0.3, axis='y')
     
     plt.savefig('results/comparison_results.pdf', dpi=300, bbox_inches='tight')
