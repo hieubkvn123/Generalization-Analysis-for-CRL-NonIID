@@ -94,7 +94,7 @@ for alpha in alphas_plot1:
     ax1.plot(k_values, results_all[alpha], marker='o', markersize=3, 
              label=f'α = {alpha}', linewidth=2)
 
-ax1.set_xlabel('k', fontsize=16)
+ax1.set_xlabel('k (Number of negative samples)', fontsize=16)
 ax1.set_ylabel('$P(k \\leq R(1-\\tau)^2)$', fontsize=16)
 ax1.legend(fontsize=16)
 ax1.grid(True, alpha=0.3)
