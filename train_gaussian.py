@@ -627,118 +627,32 @@ def visualize_comparison(results_weighted, results_unweighted, class_sizes):
     """
     Compare weighted vs unweighted approaches
     """
-    fig = plt.figure(figsize=(16, 10))
-    gs = fig.add_gridspec(3, 3, hspace=0.3, wspace=0.3)
+    fig, ax = plt.subplots(figsize=(10, 6))
     
     # Extract results
     _, loss_w, test_loss_w, final_test_w, rarest = results_weighted
     _, loss_uw, test_loss_uw, final_test_uw, _ = results_unweighted
     
-    # 1. Training loss comparison
-    ax1 = fig.add_subplot(gs[0, :])
-    epochs = np.arange(len(loss_w))
-    ax1.plot(epochs, loss_w, 'b-', linewidth=2, label='Weighted', alpha=0.7)
-    ax1.plot(epochs, loss_uw, 'r-', linewidth=2, label='Unweighted', alpha=0.7)
-    ax1.set_xlabel('Epoch', fontsize=12)
-    ax1.set_ylabel('Training Loss', fontsize=12)
-    ax1.set_title('Training Loss Comparison (Batched Processing)', fontsize=14, fontweight='bold')
-    ax1.legend(fontsize=11)
-    ax1.grid(True, alpha=0.3)
-    
-    # 2. Test loss on rare classes over time
-    ax2 = fig.add_subplot(gs[1, :])
-    test_epochs = np.arange(20, len(loss_w)+1, 20)
-    ax2.plot(test_epochs, test_loss_w, 'bo-', linewidth=2, markersize=8, 
-             label='Weighted', alpha=0.7)
-    ax2.plot(test_epochs, test_loss_uw, 'ro-', linewidth=2, markersize=8,
-             label='Unweighted', alpha=0.7)
-    ax2.set_xlabel('Epoch', fontsize=12)
-    ax2.set_ylabel('Test Loss (5 Rarest Classes)', fontsize=12)
-    ax2.set_title('Test Performance on Rare Classes', fontsize=14, fontweight='bold')
-    ax2.legend(fontsize=11)
-    ax2.grid(True, alpha=0.3)
-    
-    # 3. Final test loss per rare class - bar plot
-    ax3 = fig.add_subplot(gs[2, 0])
+    # Final test loss per rare class - bar plot
     x_pos = np.arange(len(rarest))
     width = 0.35
     
     losses_w = [final_test_w[c] for c in rarest]
     losses_uw = [final_test_uw[c] for c in rarest]
     
-    ax3.bar(x_pos - width/2, losses_w, width, label='Weighted', 
+    ax.bar(x_pos - width/2, losses_w, width, label='$U_N$', 
             color='blue', alpha=0.7)
-    ax3.bar(x_pos + width/2, losses_uw, width, label='Unweighted',
+    ax.bar(x_pos + width/2, losses_uw, width, label='$U_N^\mathrm{hl}$',
             color='red', alpha=0.7)
-    ax3.set_xlabel('Class ID', fontsize=11)
-    ax3.set_ylabel('Final Test Loss', fontsize=11)
-    ax3.set_title('Loss per Rare Class', fontsize=12, fontweight='bold')
-    ax3.set_xticks(x_pos)
-    ax3.set_xticklabels([f'C{c}' for c in rarest])
-    ax3.legend(fontsize=10)
-    ax3.grid(True, alpha=0.3, axis='y')
+    ax.set_xlabel('Rare Class ID', fontsize=16)
+    ax.set_ylabel('Final Test Loss', fontsize=16)
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels([f'C{c}' for c in rarest])
+    ax.legend(fontsize=10)
+    ax.grid(True, alpha=0.3, axis='y')
     
-    # 4. Class distribution
-    ax4 = fig.add_subplot(gs[2, 1])
-    ax4.bar(range(len(class_sizes)), class_sizes, color='steelblue', alpha=0.7)
-    ax4.set_xlabel('Class ID', fontsize=11)
-    ax4.set_ylabel('Number of Samples', fontsize=11)
-    ax4.set_title('Class Distribution (Imbalanced)', fontsize=12, fontweight='bold')
-    ax4.axhline(y=class_sizes[0], color='red', linestyle='--', 
-                linewidth=2, label=f'Dominant: {class_sizes[0]}')
-    for c in rarest:
-        ax4.axvline(x=c, color='orange', linestyle=':', alpha=0.5)
-    ax4.legend(fontsize=9)
-    ax4.grid(True, alpha=0.3, axis='y')
-    
-    # 5. Summary statistics
-    ax5 = fig.add_subplot(gs[2, 2])
-    ax5.axis('off')
-    
-    avg_final_w = np.mean(losses_w)
-    avg_final_uw = np.mean(losses_uw)
-    improvement = ((avg_final_uw - avg_final_w) / avg_final_uw) * 100
-    
-    summary_text = f"""
-    SUMMARY STATISTICS
-    {'='*35}
-    
-    Training:
-      • Weighted final loss: {loss_w[-1]:.4f}
-      • Unweighted final loss: {loss_uw[-1]:.4f}
-    
-    Test (5 Rarest Classes):
-      • Weighted avg: {avg_final_w:.4f}
-      • Unweighted avg: {avg_final_uw:.4f}
-      • Improvement: {improvement:+.2f}%
-    
-    Dataset:
-      • Dominant class size: {class_sizes[0]}
-      • Rarest class size: {class_sizes[rarest].min()}
-      • Imbalance ratio: {class_sizes[0]/class_sizes[rarest].min():.1f}x
-    
-    Winner: {'WEIGHTED ✓' if avg_final_w < avg_final_uw else 'UNWEIGHTED ✓'}
-    """
-    
-    ax5.text(0.1, 0.5, summary_text, fontsize=10, family='monospace',
-             verticalalignment='center', bbox=dict(boxstyle='round', 
-             facecolor='wheat', alpha=0.3))
-    
-    plt.suptitle('Weighted vs Unweighted Incomplete U-Statistics (Batched)',
-                 fontsize=16, fontweight='bold', y=0.98)
-    
-    plt.savefig('results/comparison_results_batched.pdf', dpi=150, bbox_inches='tight')
+    plt.savefig('results/comparison_results.pdf', dpi=300, bbox_inches='tight')
     plt.show()
-    
-    print("\n" + "="*60)
-    print("FINAL COMPARISON RESULTS (BATCHED)")
-    print("="*60)
-    print(f"\nTest Loss on 5 Rarest Classes:")
-    print(f"  Weighted:   {avg_final_w:.4f}")
-    print(f"  Unweighted: {avg_final_uw:.4f}")
-    print(f"  Improvement: {improvement:+.2f}%")
-    print(f"\nWinner: {'WEIGHTED ✓' if avg_final_w < avg_final_uw else 'UNWEIGHTED ✓'}")
-    print("="*60)
 
 # -----------------------------------------------------
 # Main
