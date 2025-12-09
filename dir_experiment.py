@@ -94,8 +94,8 @@ for alpha in alphas_plot1:
     ax1.plot(k_values, results_all[alpha], marker='o', markersize=3, 
              label=f'α = {alpha}', linewidth=2)
 
-ax1.set_xlabel('k (Number of negative samples)', fontsize=16)
-ax1.set_ylabel('$P(k \\leq R(1-\\tau)^2)$', fontsize=16)
+ax1.set_xlabel('$k$ (Number of negative samples)', fontsize=16)
+ax1.set_ylabel('$P_\\alpha(R, k)$', fontsize=16)
 ax1.legend(fontsize=16)
 ax1.grid(True, alpha=0.3)
 ax1.set_xlim(10, 51)
@@ -117,12 +117,12 @@ for i, e_delta in enumerate(delta_values):
              label=f'δ = 1e-{e_delta}', color=colors[i])
 
 ax2.set_xlabel('$\\alpha$ (Dirichlet concentration parameter)', fontsize=16)
-ax2.set_ylabel('Max $k$ where $P(k \\leq R(1-\\tau)^2) \\geq 1-\\delta$', fontsize=16)
+ax2.set_ylabel('Max $k$ where $P_\\alpha(R, k) \\geq 1-\\delta$', fontsize=16)
 ax2.legend(fontsize=16)
 ax2.grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig('results/dir_experiment.pdf', dpi=300, bbox_inches='tight')
+plt.savefig('results/combined_analysis.pdf', dpi=300, bbox_inches='tight')
 plt.show()
 
 # Print summary statistics
