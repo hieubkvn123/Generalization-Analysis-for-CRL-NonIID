@@ -49,36 +49,25 @@ def estimate_probability(R, k, alpha, n_samples=10000):
 
 # Parameters
 R = 100
-alphas_plot1 = [0.2, 0.4, 0.6, 0.8, 1.0, 1.5]
-alphas_plot2 = np.arange(0.1, 1.6, 0.1)
+alphas_all = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5] 
+alphas_plot1 = [0.2, 0.4, 0.6, 0.8, 1.0, 1.5]  # Subset for Plot 1
 k_values = list(range(1, 51))
 n_samples = 10000
 delta_values = [1, 2, 3]
 
-# Store results
-results_plot1 = {alpha: [] for alpha in alphas_plot1}
-results_plot2 = {alpha: [] for alpha in alphas_plot2}
+# Store results for ALL alphas (single computation)
+results_all = {alpha: [] for alpha in alphas_all}
 max_k_results = {10 ** (-e_delta): {} for e_delta in delta_values}
 
-# Run Monte Carlo simulations for Plot 1
+# Run Monte Carlo simulations ONCE for all alphas
 print("="*70)
-print("PART 1: Computing probability curves for selected alphas")
+print("Computing probability curves for ALL alphas (0.1 to 1.5)")
 print("="*70)
-for alpha in alphas_plot1:
-    print(f"\nProcessing alpha = {alpha}")
-    for k in tqdm(k_values):
-        prob = estimate_probability(R, k, alpha, n_samples)
-        results_plot1[alpha].append(prob)
-
-# Run Monte Carlo simulations for Plot 2
-print("\n" + "="*70)
-print("PART 2: Computing max k for all alphas and delta values")
-print("="*70)
-for alpha in alphas_plot2:
+for alpha in alphas_all:
     print(f"\nProcessing alpha = {alpha:.2f}")
     for k in tqdm(k_values):
         prob = estimate_probability(R, k, alpha, n_samples)
-        results_plot2[alpha].append(prob)
+        results_all[alpha].append(prob)
     
     # For each delta, find max k such that P(k/(1-tau)^2 <= R) >= 1-delta
     for e_delta in delta_values:
@@ -88,7 +77,7 @@ for alpha in alphas_plot2:
         
         # Find the largest k satisfying the threshold
         for i, k in enumerate(k_values):
-            if results_plot2[alpha][i] >= threshold:
+            if results_all[alpha][i] >= threshold:
                 max_k = k
         
         max_k_results[delta][alpha] = max_k if max_k is not None else 0
@@ -96,20 +85,26 @@ for alpha in alphas_plot2:
 # Create side-by-side visualization
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
-# Plot 1: Probability curves for selected alphas
+# Plot 1: Probability curves for SELECTED alphas (subset)
+print("\n" + "="*70)
+print("PART 1: Plotting selected alphas")
+print("="*70)
 for alpha in alphas_plot1:
-    ax1.plot(k_values, results_plot1[alpha], marker='o', markersize=3, 
+    print(results_all)
+    ax1.plot(k_values, results_all[alpha], marker='o', markersize=3, 
              label=f'α = {alpha}', linewidth=2)
 
-ax1.set_xlabel('k', fontsize=12)
-ax1.set_ylabel('$P(k \\leq R(1-\\tau)^2)$', fontsize=12)
-ax1.set_title(f'Probability vs k for Different α (R={R})', fontsize=14)
-ax1.legend(fontsize=10)
+ax1.set_xlabel('k', fontsize=16)
+ax1.set_ylabel('$P(k \\leq R(1-\\tau)^2)$', fontsize=16)
+ax1.legend(fontsize=16)
 ax1.grid(True, alpha=0.3)
 ax1.set_xlim(10, 51)
 ax1.set_ylim(-0.05, 1.05)
 
-# Plot 2: Max k as a function of alpha for different delta values
+# Plot 2: Max k as a function of alpha for different delta values (ALL alphas)
+print("\n" + "="*70)
+print("PART 2: Plotting max k for all alphas")
+print("="*70)
 colors = ['#1f77b4', '#ff7f0e', '#2ca02c']
 markers = ['o', 's', '^']
 
@@ -121,37 +116,38 @@ for i, e_delta in enumerate(delta_values):
     ax2.plot(alpha_list, max_k_list, marker=markers[i], markersize=6, linewidth=2, 
              label=f'δ = 1e-{e_delta}', color=colors[i])
 
-ax2.set_xlabel('α (Dirichlet concentration parameter)', fontsize=12)
-ax2.set_ylabel('Max k where $P(k \\leq R(1-\\tau)^2) \\geq 1-\\delta$', fontsize=12)
-ax2.set_title(f'Maximum k vs α for Different Confidence Levels (R={R})', fontsize=14)
-ax2.legend(fontsize=11)
+ax2.set_xlabel('$\\alpha$ (Dirichlet concentration parameter)', fontsize=16)
+ax2.set_ylabel('Max $k$ where $P(k \\leq R(1-\\tau)^2) \\geq 1-\\delta$', fontsize=16)
+ax2.legend(fontsize=16)
 ax2.grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig('combined_analysis.pdf', dpi=300, bbox_inches='tight')
+plt.savefig('results/dir_experiment.pdf', dpi=300, bbox_inches='tight')
 plt.show()
 
 # Print summary statistics
 print("\n" + "="*70)
-print("SUMMARY STATISTICS - PART 1")
+print("SUMMARY STATISTICS - PART 1 (Selected Alphas)")
 print("="*70)
 for alpha in alphas_plot1:
     print(f"\nα = {alpha}:")
-    print(f"  Min probability: {min(results_plot1[alpha]):.4f}")
-    print(f"  Max probability: {max(results_plot1[alpha]):.4f}")
-    print(f"  Mean probability: {np.mean(results_plot1[alpha]):.4f}")
+    print(f"  Min probability: {min(results_all[alpha]):.4f}")
+    print(f"  Max probability: {max(results_all[alpha]):.4f}")
+    print(f"  Mean probability: {np.mean(results_all[alpha]):.4f}")
 
 print("\n" + "="*70)
-print("SUMMARY STATISTICS - PART 2")
+print("SUMMARY STATISTICS - PART 2 (All Alphas)")
 print("="*70)
 print(f"\n{'α':<10}", end='')
-for delta in delta_values:
-    print(f"δ={delta} (P≥{1-delta}){' '*3}", end='')
+for e_delta in delta_values:
+    print(f"δ=1e-{e_delta} (P≥{1-10**(-e_delta):.3f}){' '*3}", end='')
 print("\n" + "-"*70)
 
-for alpha in sorted(alphas_plot2):
+for alpha in sorted(alphas_all):
     print(f"{alpha:<10.2f}", end='')
     for e_delta in delta_values:
         delta = 10 ** (-e_delta)
-        print(f"{max_k_results[delta][alpha]:<20}", end='')
+        print(f"{max_k_results[delta][alpha]:<25}", end='')
     print()
+
+
