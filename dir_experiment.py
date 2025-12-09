@@ -83,7 +83,8 @@ for alpha in alphas_all:
         max_k_results[delta][alpha] = max_k if max_k is not None else 0
 
 # Create side-by-side visualization
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+# fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 12))
 
 # Plot 1: Probability curves for SELECTED alphas (subset)
 print("\n" + "="*70)
