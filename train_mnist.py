@@ -858,7 +858,7 @@ def main():
     start_time = time.time()
     results_unweighted = train_contrastive_model(
         X_train_img, labels_train, X_test_img, labels_test,
-        config, n_epochs=300, use_weighting=False, avoid_collision=True
+        config, n_epochs=400, use_weighting=False, avoid_collision=True
     )
     unweighted_time = time.time() - start_time
     encoder_unweighted, _, _, _, rarest_classes = results_unweighted
@@ -887,7 +887,7 @@ def main():
     start_time = time.time()
     results_weighted = train_contrastive_model(
         X_train_img, labels_train, X_test_img, labels_test,
-        config, n_epochs=300, use_weighting=True, avoid_collision=False
+        config, n_epochs=400, use_weighting=True, avoid_collision=False
     )
     weighted_time = time.time() - start_time
     encoder_weighted, _, _, _, rarest_classes = results_weighted
