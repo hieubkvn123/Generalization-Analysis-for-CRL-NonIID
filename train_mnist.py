@@ -8,20 +8,21 @@ import time
 import random
 import matplotlib.pyplot as plt
 from torchvision import datasets, transforms
+from torchvision.models import resnet18, ResNet18_Weights
 
 # -----------------------------------------------------
 # Configuration
 # -----------------------------------------------------
 @dataclass
 class ContrastiveConfig:
-    n_samples: int = 10000  # Total samples to use from CIFAR100
-    n_features: int = 512 # ResNet18 feature dimension
-    n_classes: int = 100
-    k_negatives: int = 20
+    n_samples: int = 5000  # Total samples to use from MNIST
+    n_features: int = 28 * 28 * 1
+    n_classes: int = 10
+    k_negatives: int = 3
     temperature: float = 0.5
     batch_size: int = 64  # Reduced for image processing
     m_incomplete: int = 3000  # sub-sampled tuples 
-    test_size: int = 5000  # test samples
+    test_size: int = 4000  # test samples
 
 # -----------------------------------------------------
 # Feature Extractor 
@@ -30,41 +31,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class CIFARFeatureExtractor(nn.Module):
-    """
-    Simple CNN feature extractor for CIFAR images.
-    Input:  (B, 3, 32, 32)
-    Output: (B, 512)
-    """
-    def __init__(self):
-        super().__init__()
-
-        self.conv = nn.Sequential(
-            # Block 1: 32×32 → 16×16
-            nn.Conv2d(3, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2)
-        )
-
-        # Final linear projection to enforce exactly 512 features.
-        self.fc = nn.Linear(64 * 16 * 16, 512)
-
-    def forward(self, x):
-        x = self.conv(x)
-        x = x.view(x.size(0), -1)
-        return self.fc(x)
-
 # -----------------------------------------------------
-# Simple encoder (same as original)
+# Simple encoder
 # -----------------------------------------------------
 class SimpleEncoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim=128, output_dim=64):
+    def __init__(self, input_dim, in_channels=1, hidden_dim=128, output_dim=64):
         super().__init__()
-        self.features = CIFARFeatureExtractor() 
+        # self.features = CIFARFeatureExtractor(in_channels=in_channels) #resnet18(weights=ResNet18_Weights.IMAGENET1K_V1) 
         self.linear1 = nn.Linear(input_dim, hidden_dim, bias=False)
         self.bn1 = nn.BatchNorm1d(hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
@@ -76,7 +49,6 @@ class SimpleEncoder(nn.Module):
 
     def forward(self, x):
         # Extract Features
-        x = self.features(x)
         x = x.view(x.size(0), -1)
 
         # Pass through MLP
@@ -88,11 +60,11 @@ class SimpleEncoder(nn.Module):
         return F.normalize(z, dim=1)
 
 # -----------------------------------------------------
-# Load and subsample CIFAR100
+# Load and subsample MNIST
 # -----------------------------------------------------
-def load_cifar100_imbalanced(config, seed=42):
+def load_mnist_imbalanced(config, seed=42):
     """
-    Load CIFAR100 and create highly imbalanced subset
+    Load MNIST and create highly imbalanced subset
     """
     np.random.seed(seed)
     random.seed(seed)
@@ -101,15 +73,12 @@ def load_cifar100_imbalanced(config, seed=42):
     # Define transforms
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5071, 0.4867, 0.4408],
-                           std=[0.2675, 0.2565, 0.2761])
+        # transforms.Normalize(mean=[0.5071, 0.4867, 0.4408], std=[0.2675, 0.2565, 0.2761])
     ])
     
-    # Load full CIFAR100 dataset
-    train_dataset = datasets.CIFAR100(root='./data', train=True, 
-                                     download=True, transform=transform)
-    test_dataset = datasets.CIFAR100(root='./data', train=False,
-                                    download=True, transform=transform)
+    # Load full MNIST dataset
+    train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+    test_dataset = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
     
     # Convert to numpy for processing
     train_images = []
@@ -236,6 +205,7 @@ class ContrastiveTupleDataset(Dataset):
         # Precompute class information
         n_classes = int(labels.max().item()) + 1
         class_counts = torch.bincount(labels, minlength=n_classes).float()
+        print('Class Counts:', class_counts)
         self.class_probs = class_counts / class_counts.sum()
         
         # Precompute class indices for faster sampling
@@ -629,7 +599,7 @@ def visualize_rare_class_embeddings(X_test, labels_test, encoder_weighted, encod
                   fontsize=16, fontweight='bold')
 
     plt.tight_layout()
-    plt.savefig('results/cifar100_rare_class_embeddings.pdf', dpi=150, bbox_inches='tight')
+    plt.savefig('results/mnist_rare_class_embeddings.pdf', dpi=150, bbox_inches='tight')
     plt.show()
     
     print("\n" + "="*60)
@@ -673,7 +643,7 @@ def visualize_comparison(results_weighted, results_unweighted, class_sizes):
     ax.legend(fontsize=16)
     ax.grid(True, alpha=0.3, axis='y')
     
-    plt.savefig('results/cifar100_comparison_results.pdf', dpi=300, bbox_inches='tight')
+    plt.savefig('results/mnist_comparison_results.pdf', dpi=300, bbox_inches='tight')
     plt.show()
 
 # -----------------------------------------------------
@@ -682,18 +652,18 @@ def visualize_comparison(results_weighted, results_unweighted, class_sizes):
 def main():
     print("="*60)
     print("WEIGHTED vs UNWEIGHTED INCOMPLETE U-STATISTICS")
-    print("CIFAR100 Dataset")
+    print("MNIST Dataset")
     print("="*60)
     
     config = ContrastiveConfig()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\nDevice: {device}")
     
-    # Load CIFAR100
+    # Load MNIST
     print("\n" + "-"*60)
-    print("LOADING CIFAR100 DATASET")
+    print("LOADING MNIST DATASET")
     print("-"*60)
-    X_train_img, labels_train, X_test_img, labels_test, class_sizes = load_cifar100_imbalanced(config)
+    X_train_img, labels_train, X_test_img, labels_test, class_sizes = load_mnist_imbalanced(config)
     
     # Train UNWEIGHTED
     print("\n" + "="*60)
@@ -740,7 +710,7 @@ def main():
     print("VISUALIZING RARE CLASS EMBEDDINGS (PCA)")
     print("="*60)
     visualize_rare_class_embeddings(
-        X_test, labels_test,
+        X_test_img, labels_test,
         encoder_weighted, encoder_unweighted,
         rarest_classes, config, device
     )
