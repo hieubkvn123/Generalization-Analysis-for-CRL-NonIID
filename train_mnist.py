@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import time
 import random
 import matplotlib.pyplot as plt
+from tsne import tsne_2d
 from torchvision import datasets, transforms
 from torchvision.models import resnet18, ResNet18_Weights
 
