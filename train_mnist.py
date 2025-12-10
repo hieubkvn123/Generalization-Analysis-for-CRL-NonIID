@@ -60,6 +60,16 @@ class SimpleEncoder(nn.Module):
         z = self.linear3(z)
         return F.normalize(z, dim=1)
 
+class LinearClassifier(nn.Module):
+    def __init__(self, input_dim, n_classes):
+        super().__init__()
+        self.linear = nn.Linear(input_dim, n_classes)
+        nn.init.normal_(self.linear.weight, std=0.01)
+        nn.init.zeros_(self.linear.bias)
+    
+    def forward(self, x):
+        return self.linear(x)
+
 # -----------------------------------------------------
 # Load and subsample MNIST
 # -----------------------------------------------------
@@ -492,6 +502,181 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test,
     
     return encoder, loss_history, test_loss_history, final_test_losses, rarest_classes
 
+def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test, 
+                           config, device, n_epochs=100):
+    """
+    Train a linear classifier on top of frozen encoder representations
+    """
+    print("\n" + "="*60)
+    print("TRAINING LINEAR CLASSIFIER")
+    print("="*60)
+    
+    encoder.eval()
+    
+    # Extract representations
+    with torch.no_grad():
+        batch_size = 256
+        train_reps = []
+        for i in range(0, len(X_train), batch_size):
+            batch = X_train[i:i+batch_size].to(device)
+            reps = encoder(batch)
+            train_reps.append(reps.cpu())
+        train_reps = torch.cat(train_reps, dim=0).to(device)
+        
+        test_reps = []
+        for i in range(0, len(X_test), batch_size):
+            batch = X_test[i:i+batch_size].to(device)
+            reps = encoder(batch)
+            test_reps.append(reps.cpu())
+        test_reps = torch.cat(test_reps, dim=0).to(device)
+    
+    embedding_dim = train_reps.shape[1]
+    classifier = LinearClassifier(embedding_dim, config.n_classes).to(device)
+    optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-3)
+    criterion = nn.CrossEntropyLoss()
+    
+    # Create dataloader
+    train_dataset = torch.utils.data.TensorDataset(train_reps, labels_train)
+    train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
+    
+    print(f"Training for {n_epochs} epochs...")
+    print(f"Train representations: {train_reps.shape}")
+    print(f"Test representations: {test_reps.shape}")
+    
+    for epoch in range(n_epochs):
+        classifier.train()
+        epoch_loss = 0.0
+        correct = 0
+        total = 0
+        
+        for batch_reps, batch_labels in train_loader:
+            optimizer.zero_grad()
+            batch_labels = batch_labels.to(device)
+            
+            logits = classifier(batch_reps)
+            loss = criterion(logits, batch_labels)
+            
+            loss.backward()
+            optimizer.step()
+            
+            epoch_loss += loss.item()
+            _, predicted = logits.max(1)
+            total += batch_labels.size(0)
+            correct += predicted.eq(batch_labels).sum().item()
+        
+        train_acc = 100. * correct / total
+        
+        if (epoch + 1) % 20 == 0 or epoch == 0:
+            print(f"Epoch {epoch+1:3d} | Loss: {epoch_loss/len(train_loader):.4f} | "
+                  f"Train Acc: {train_acc:.2f}%")
+    
+    return classifier
+
+def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, 
+                                     rarest_classes, config, device):
+    """
+    Evaluate precision and recall for rare classes (without sklearn)
+    """
+    print("\n" + "="*60)
+    print("EVALUATING CLASSIFIER ON RARE CLASSES")
+    print("="*60)
+    
+    encoder.eval()
+    classifier.eval()
+    
+    # Extract test representations
+    with torch.no_grad():
+        batch_size = 256
+        test_reps = []
+        for i in range(0, len(X_test), batch_size):
+            batch = X_test[i:i+batch_size].to(device)
+            reps = encoder(batch)
+            test_reps.append(reps.cpu())
+        test_reps = torch.cat(test_reps, dim=0).to(device)
+        
+        # Get predictions
+        all_logits = []
+        for i in range(0, len(test_reps), batch_size):
+            batch = test_reps[i:i+batch_size]
+            logits = classifier(batch)
+            all_logits.append(logits.cpu())
+        all_logits = torch.cat(all_logits, dim=0)
+        predictions = all_logits.argmax(dim=1).cpu().numpy()
+    
+    labels_np = labels_test.cpu().numpy()
+    
+    # Calculate overall metrics
+    overall_acc = (predictions == labels_np).mean() * 100
+    
+    # Compute precision and recall manually for each class
+    precision = {}
+    recall = {}
+    f1 = {}
+    support = {}
+    
+    for c in range(config.n_classes):
+        # True positives: predicted as c AND actually c
+        tp = np.sum((predictions == c) & (labels_np == c))
+        
+        # False positives: predicted as c BUT actually not c
+        fp = np.sum((predictions == c) & (labels_np != c))
+        
+        # False negatives: predicted as not c BUT actually c
+        fn = np.sum((predictions != c) & (labels_np == c))
+        
+        # Support: total number of samples in class c
+        support[c] = np.sum(labels_np == c)
+        
+        # Precision: TP / (TP + FP)
+        if tp + fp > 0:
+            precision[c] = tp / (tp + fp)
+        else:
+            precision[c] = 0.0
+        
+        # Recall: TP / (TP + FN)
+        if tp + fn > 0:
+            recall[c] = tp / (tp + fn)
+        else:
+            recall[c] = 0.0
+        
+        # F1-Score: 2 * (Precision * Recall) / (Precision + Recall)
+        if precision[c] + recall[c] > 0:
+            f1[c] = 2 * (precision[c] * recall[c]) / (precision[c] + recall[c])
+        else:
+            f1[c] = 0.0
+    
+    print(f"\nOverall Test Accuracy: {overall_acc:.2f}%")
+    print("\n" + "-"*60)
+    print("RARE CLASS METRICS")
+    print("-"*60)
+    print(f"{'Class':<8} {'Support':<10} {'Precision':<12} {'Recall':<12} {'F1-Score':<12}")
+    print("-"*60)
+    
+    rare_metrics = {}
+    for c in rarest_classes:
+        rare_metrics[c] = {
+            'precision': precision[c],
+            'recall': recall[c],
+            'f1': f1[c],
+            'support': support[c]
+        }
+        print(f"{c:<8} {support[c]:<10} {precision[c]:<12.4f} {recall[c]:<12.4f} {f1[c]:<12.4f}")
+    
+    print("-"*60)
+    
+    # Calculate average metrics for rare classes
+    avg_precision = np.mean([rare_metrics[c]['precision'] for c in rarest_classes])
+    avg_recall = np.mean([rare_metrics[c]['recall'] for c in rarest_classes])
+    avg_f1 = np.mean([rare_metrics[c]['f1'] for c in rarest_classes])
+    
+    print(f"\nAverage across rare classes:")
+    print(f"  Precision: {avg_precision:.4f}")
+    print(f"  Recall:    {avg_recall:.4f}")
+    print(f"  F1-Score:  {avg_f1:.4f}")
+    print("="*60)
+    
+    return rare_metrics, overall_acc
+
 # -----------------------------------------------------
 # PCA Visualization
 # -----------------------------------------------------
@@ -676,8 +861,24 @@ def main():
         config, n_epochs=300, use_weighting=False, avoid_collision=True
     )
     unweighted_time = time.time() - start_time
-    encoder_unweighted, _, _, _, _ = results_unweighted
+    encoder_unweighted, _, _, _, rarest_classes = results_unweighted
     print(f"\nUnweighted training completed in {unweighted_time:.2f}s")
+
+    # Train classifier unweighted
+    print("\n--- Training classifier on UNWEIGHTED encoder ---")
+    classifier_unweighted = train_linear_classifier(
+        encoder_unweighted, X_train_img, labels_train,
+        X_test_img, labels_test, config, device, n_epochs=100
+    )
+
+    # Evaluate classifier - unweighted
+    print("\n" + "="*60)
+    print("CLASSIFICATION RESULTS - UNWEIGHTED ENCODER")
+    print("="*60)
+    metrics_unweighted, acc_unweighted = evaluate_classifier_rare_classes(
+        classifier_unweighted, encoder_unweighted, X_test_img, labels_test,
+        rarest_classes, config, device
+    )
 
     # Train WEIGHTED
     print("\n" + "="*60)
@@ -691,38 +892,32 @@ def main():
     weighted_time = time.time() - start_time
     encoder_weighted, _, _, _, rarest_classes = results_weighted
     print(f"\nWeighted training completed in {weighted_time:.2f}s")
-    
-    # Compare training times
+
+    # Train classifier weighted
+    print("\n--- Training classifier on WEIGHTED encoder ---")
+    classifier_weighted = train_linear_classifier(
+        encoder_weighted, X_train_img, labels_train,
+        X_test_img, labels_test, config, device, n_epochs=100
+    )
+
+    # Evaluate classifier - weighted 
     print("\n" + "="*60)
-    print("TRAINING TIME COMPARISON")
+    print("CLASSIFICATION RESULTS - WEIGHTED ENCODER")
     print("="*60)
-    print(f"Weighted:   {weighted_time:.2f}s ({weighted_time/60:.2f} min)")
-    print(f"Unweighted: {unweighted_time:.2f}s ({unweighted_time/60:.2f} min)")
-    print(f"Speedup from batching: ~{max(weighted_time, unweighted_time) / min(weighted_time, unweighted_time):.2f}x")
-    
+    metrics_weighted, acc_weighted = evaluate_classifier_rare_classes(
+        classifier_weighted, encoder_weighted, X_test_img, labels_test,
+        rarest_classes, config, device
+    )
+
     # Visualize comparison
     print("\n" + "="*60)
     print("GENERATING COMPARISON PLOTS")
     print("="*60)
     visualize_comparison(results_weighted, results_unweighted, class_sizes)
-    
-    # Visualize rare class embeddings with PCA
-    print("\n" + "="*60)
-    print("VISUALIZING RARE CLASS EMBEDDINGS (PCA)")
-    print("="*60)
-    visualize_rare_class_embeddings(
-        X_test_img, labels_test,
-        encoder_weighted, encoder_unweighted,
-        rarest_classes, config, device
-    )
-    
+
     print("\n" + "="*60)
     print("ALL EXPERIMENTS COMPLETED!")
     print("="*60)
-    print("\nGenerated files:")
-    print("  - results/comparison_results_batched.pdf")
-    print("  - results/rare_class_embeddings.pdf")
-    print("\n" + "="*60)
 
 
 if __name__ == '__main__':
