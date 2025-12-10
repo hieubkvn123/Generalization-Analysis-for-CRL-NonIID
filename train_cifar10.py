@@ -9,7 +9,7 @@ import random
 import matplotlib.pyplot as plt
 from tsne import tsne_2d
 from torchvision import datasets, transforms
-from torchvision.models import resnet18, ResNet18_Weights
+from torchvision.models.resnet import resnet50, resnet18
 
 # -----------------------------------------------------
 # Configuration
@@ -21,7 +21,7 @@ class ContrastiveConfig:
     n_classes: int = 10
     k_negatives: int = 5
     temperature: float = 0.5
-    batch_size: int = 64  # Reduced for image processing
+    batch_size: int = 16 # Reduced for image processing
     m_incomplete: int = 3000  # sub-sampled tuples 
     test_size: int = 4000  # test samples
 
@@ -36,29 +36,26 @@ import torch.nn.functional as F
 # Simple encoder
 # -----------------------------------------------------
 class SimpleEncoder(nn.Module):
-    def __init__(self, input_dim, in_channels=1, hidden_dim=128, output_dim=64):
-        super().__init__()
-        # self.features = CIFARFeatureExtractor(in_channels=in_channels) #resnet18(weights=ResNet18_Weights.IMAGENET1K_V1) 
-        self.linear1 = nn.Linear(input_dim, hidden_dim, bias=False)
-        self.bn1 = nn.BatchNorm1d(hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
-        self.bn2 = nn.BatchNorm1d(hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, output_dim)
-        nn.init.normal_(self.linear1.weight, std=0.01)
-        nn.init.normal_(self.linear2.weight, std=0.01)
-        nn.init.normal_(self.linear3.weight, std=0.01)
+    def __init__(self, in_channels=3, hidden_dim=128, output_dim=64):
+        super(SimpleEncoder, self).__init__()
+
+        self.f = []
+        for name, module in resnet18().named_children():
+            if name == 'conv1':
+                module = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+            if not isinstance(module, nn.Linear) and not isinstance(module, nn.MaxPool2d):
+                self.f.append(module)
+        # encoder
+        self.f = nn.Sequential(*self.f)
+        # projection head
+        self.g = nn.Sequential(nn.Linear(512, hidden_dim, bias=False), nn.BatchNorm1d(hidden_dim),
+                               nn.ReLU(inplace=True), nn.Linear(hidden_dim, output_dim, bias=True))
 
     def forward(self, x):
-        # Extract Features
-        x = x.view(x.size(0), -1)
-
-        # Pass through MLP
-        z = F.relu(self.linear1(x))
-        z = self.bn1(z)
-        z = F.relu(self.linear2(z))
-        z = self.bn2(z)
-        z = self.linear3(z)
-        return F.normalize(z, dim=1)
+        x = self.f(x)
+        feature = torch.flatten(x, start_dim=1)
+        out = self.g(feature)
+        return F.normalize(out, dim=-1)
 
 # -----------------------------------------------------
 # Load and subsample MNIST
@@ -74,12 +71,12 @@ def load_mnist_imbalanced(config, seed=42):
     # Define transforms
     transform = transforms.Compose([
         transforms.ToTensor(),
-        # transforms.Normalize(mean=[0.5071, 0.4867, 0.4408], std=[0.2675, 0.2565, 0.2761])
+        transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])
     ])
     
     # Load full MNIST dataset
-    train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
-    test_dataset = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+    train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+    test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
     
     # Convert to numpy for processing
     train_images = []
