@@ -37,7 +37,7 @@ Class Counts: tensor([2250.,  440.,  399.,  361.,  326.,  295.,  267.,  242.,  2
  - Update model at epoch 13, new best = 0.60030
  - Update model at epoch 14, new best = 0.59257
  - Update model at epoch 15, new best = 0.56788
-Epoch  20 | Train Loss: 0.5885 | Test Loss (rare): 1.1266 | Time: 0.60s
+Epoch  20 | Train Loss: 0.5885 | Test Loss (rare): 1.1266 | Time: 0.61s
  - Update model at epoch 20, new best = 0.54849
  - Update model at epoch 21, new best = 0.54145
  - Update model at epoch 22, new best = 0.53641
@@ -48,53 +48,41 @@ Epoch  20 | Train Loss: 0.5885 | Test Loss (rare): 1.1266 | Time: 0.60s
  - Update model at epoch 29, new best = 0.46467
  - Update model at epoch 31, new best = 0.44403
  - Update model at epoch 37, new best = 0.40693
-Epoch  40 | Train Loss: 0.4394 | Test Loss (rare): 1.2747 | Time: 0.60s
+Epoch  40 | Train Loss: 0.4394 | Test Loss (rare): 1.2747 | Time: 0.61s
  - Update model at epoch 45, new best = 0.39785
  - Update model at epoch 49, new best = 0.39195
  - Update model at epoch 50, new best = 0.35589
-Epoch  60 | Train Loss: 0.4097 | Test Loss (rare): 1.3980 | Time: 0.60s
+Epoch  60 | Train Loss: 0.4097 | Test Loss (rare): 1.3980 | Time: 0.61s
  - Update model at epoch 60, new best = 0.35515
  - Update model at epoch 64, new best = 0.34198
  - Update model at epoch 69, new best = 0.33681
  - Update model at epoch 70, new best = 0.32942
-Epoch  80 | Train Loss: 0.3588 | Test Loss (rare): 1.5150 | Time: 0.62s
+Epoch  80 | Train Loss: 0.3588 | Test Loss (rare): 1.5150 | Time: 0.61s
  - Update model at epoch 81, new best = 0.31569
  - Update model at epoch 97, new best = 0.31195
-Epoch 100 | Train Loss: 0.4251 | Test Loss (rare): 1.4054 | Time: 0.62s
-Epoch 120 | Train Loss: 0.3243 | Test Loss (rare): 1.5384 | Time: 0.62s
-Epoch 140 | Train Loss: 0.3965 | Test Loss (rare): 1.4065 | Time: 0.62s
+Epoch 100 | Train Loss: 0.4251 | Test Loss (rare): 1.4054 | Time: 0.61s
+Epoch 120 | Train Loss: 0.3243 | Test Loss (rare): 1.5384 | Time: 0.60s
+Epoch 140 | Train Loss: 0.3965 | Test Loss (rare): 1.4065 | Time: 0.61s
  - Update model at epoch 158, new best = 0.29837
-Epoch 160 | Train Loss: 0.3204 | Test Loss (rare): 1.4519 | Time: 0.62s
+Epoch 160 | Train Loss: 0.3204 | Test Loss (rare): 1.4519 | Time: 0.61s
  - Update model at epoch 172, new best = 0.28091
-Epoch 180 | Train Loss: 0.3061 | Test Loss (rare): 1.3237 | Time: 0.62s
+Epoch 180 | Train Loss: 0.3061 | Test Loss (rare): 1.3237 | Time: 0.61s
  - Update model at epoch 190, new best = 0.28069
  - Update model at epoch 191, new best = 0.27634
-Epoch 200 | Train Loss: 0.2873 | Test Loss (rare): 1.3465 | Time: 0.62s
-Epoch 220 | Train Loss: 0.3204 | Test Loss (rare): 1.5978 | Time: 0.62s
+Epoch 200 | Train Loss: 0.2873 | Test Loss (rare): 1.3465 | Time: 0.61s
+Epoch 220 | Train Loss: 0.3204 | Test Loss (rare): 1.5978 | Time: 0.61s
  - Update model at epoch 238, new best = 0.27315
  - Update model at epoch 239, new best = 0.27252
-Epoch 240 | Train Loss: 0.2725 | Test Loss (rare): 1.4884 | Time: 0.62s
+Epoch 240 | Train Loss: 0.2725 | Test Loss (rare): 1.4884 | Time: 0.61s
  - Update model at epoch 253, new best = 0.27158
  - Update model at epoch 254, new best = 0.26908
  - Update model at epoch 255, new best = 0.26345
-Epoch 260 | Train Loss: 0.2912 | Test Loss (rare): 1.4787 | Time: 0.62s
-Epoch 280 | Train Loss: 0.2929 | Test Loss (rare): 1.4997 | Time: 0.62s
+Epoch 260 | Train Loss: 0.2912 | Test Loss (rare): 1.4787 | Time: 0.61s
+Epoch 280 | Train Loss: 0.2929 | Test Loss (rare): 1.4997 | Time: 0.61s
  - Update model at epoch 286, new best = 0.25409
-Epoch 300 | Train Loss: 0.3721 | Test Loss (rare): 1.4161 | Time: 0.62s
-Epoch 320 | Train Loss: 0.2750 | Test Loss (rare): 1.4615 | Time: 0.62s
-Epoch 340 | Train Loss: 0.2606 | Test Loss (rare): 1.3172 | Time: 0.62s
- - Update model at epoch 341, new best = 0.24401
- - Update model at epoch 358, new best = 0.24054
-Epoch 360 | Train Loss: 0.2842 | Test Loss (rare): 1.6059 | Time: 0.62s
- - Update model at epoch 366, new best = 0.23578
- - Update model at epoch 367, new best = 0.23035
-Epoch 380 | Train Loss: 0.2431 | Test Loss (rare): 1.5053 | Time: 0.62s
- - Update model at epoch 380, new best = 0.22618
- - Update model at epoch 395, new best = 0.22268
- - Update model at epoch 397, new best = 0.21185
-Epoch 400 | Train Loss: 0.3768 | Test Loss (rare): 1.6748 | Time: 0.62s
+Epoch 300 | Train Loss: 0.3721 | Test Loss (rare): 1.4161 | Time: 0.61s
 
-Unweighted training completed in 253.95s
+Unweighted training completed in 188.13s
 
 --- Training classifier on UNWEIGHTED encoder ---
 
@@ -104,12 +92,12 @@ TRAINING LINEAR CLASSIFIER
 Training for 100 epochs...
 Train representations: torch.Size([5000, 64])
 Test representations: torch.Size([4000, 64])
-Epoch   1 | Loss: 2.1183 | Train Acc: 50.64%
-Epoch  20 | Loss: 1.0609 | Train Acc: 61.50%
-Epoch  40 | Loss: 0.9720 | Train Acc: 64.88%
-Epoch  60 | Loss: 0.9263 | Train Acc: 68.44%
-Epoch  80 | Loss: 0.9033 | Train Acc: 69.12%
-Epoch 100 | Loss: 0.8859 | Train Acc: 71.24%
+Epoch   1 | Loss: 2.1136 | Train Acc: 44.68%
+Epoch  20 | Loss: 1.2616 | Train Acc: 50.68%
+Epoch  40 | Loss: 1.0984 | Train Acc: 58.70%
+Epoch  60 | Loss: 1.0296 | Train Acc: 58.48%
+Epoch  80 | Loss: 1.0024 | Train Acc: 61.02%
+Epoch 100 | Loss: 0.9817 | Train Acc: 64.20%
 
 ============================================================
 CLASSIFICATION RESULTS - UNWEIGHTED ENCODER
@@ -119,24 +107,24 @@ CLASSIFICATION RESULTS - UNWEIGHTED ENCODER
 EVALUATING CLASSIFIER ON RARE CLASSES
 ============================================================
 
-Overall Test Accuracy: 50.68%
+Overall Test Accuracy: 35.27%
 
 ------------------------------------------------------------
 RARE CLASS METRICS
 ------------------------------------------------------------
 Class    Support    Precision    Recall       F1-Score    
 ------------------------------------------------------------
-9        400        0.6489       0.6375       0.6431      
+9        400        0.0000       0.0000       0.0000      
 8        400        0.0000       0.0000       0.0000      
-7        400        0.5029       0.4275       0.4622      
+7        400        0.0000       0.0000       0.0000      
 6        400        0.0000       0.0000       0.0000      
-5        400        0.5928       0.6950       0.6398      
+5        400        0.3222       0.9625       0.4828      
 ------------------------------------------------------------
 
 Average across rare classes:
-  Precision: 0.3489
-  Recall:    0.3520
-  F1-Score:  0.3490
+  Precision: 0.0644
+  Recall:    0.1925
+  F1-Score:  0.0966
 ============================================================
 
 ============================================================
@@ -151,84 +139,61 @@ Rarest classes: [9, 8, 7, 6, 5] with counts [202 218 242 267 295]
 ============================================================
 Class Counts: tensor([2250.,  440.,  399.,  361.,  326.,  295.,  267.,  242.,  218.,  202.],
        device='cuda:0')
- - Update model at epoch 0, new best = 1.08237
- - Update model at epoch 1, new best = 0.97988
- - Update model at epoch 2, new best = 0.94970
- - Update model at epoch 3, new best = 0.93251
- - Update model at epoch 4, new best = 0.91382
- - Update model at epoch 6, new best = 0.88521
- - Update model at epoch 8, new best = 0.87832
- - Update model at epoch 10, new best = 0.87685
- - Update model at epoch 11, new best = 0.86102
- - Update model at epoch 13, new best = 0.84633
- - Update model at epoch 15, new best = 0.84610
- - Update model at epoch 18, new best = 0.83372
- - Update model at epoch 19, new best = 0.82148
-Epoch  20 | Train Loss: 0.8215 | Test Loss (rare): 0.9919 | Time: 1.46s
- - Update model at epoch 22, new best = 0.80502
- - Update model at epoch 24, new best = 0.78320
- - Update model at epoch 25, new best = 0.71841
- - Update model at epoch 26, new best = 0.71573
- - Update model at epoch 27, new best = 0.69126
- - Update model at epoch 29, new best = 0.64446
- - Update model at epoch 30, new best = 0.64195
- - Update model at epoch 31, new best = 0.57107
- - Update model at epoch 33, new best = 0.56514
-Epoch  40 | Train Loss: 0.5820 | Test Loss (rare): 1.2092 | Time: 1.46s
- - Update model at epoch 41, new best = 0.54281
- - Update model at epoch 44, new best = 0.52458
- - Update model at epoch 49, new best = 0.51686
- - Update model at epoch 50, new best = 0.48596
- - Update model at epoch 53, new best = 0.46601
- - Update model at epoch 54, new best = 0.43480
-Epoch  60 | Train Loss: 0.4543 | Test Loss (rare): 1.2744 | Time: 1.46s
- - Update model at epoch 70, new best = 0.43452
- - Update model at epoch 71, new best = 0.41821
- - Update model at epoch 75, new best = 0.39866
-Epoch  80 | Train Loss: 0.4763 | Test Loss (rare): 1.2502 | Time: 1.46s
- - Update model at epoch 92, new best = 0.39626
- - Update model at epoch 94, new best = 0.36259
-Epoch 100 | Train Loss: 0.5064 | Test Loss (rare): 1.2079 | Time: 1.46s
- - Update model at epoch 113, new best = 0.34905
-Epoch 120 | Train Loss: 0.3737 | Test Loss (rare): 1.3203 | Time: 1.46s
- - Update model at epoch 120, new best = 0.33070
- - Update model at epoch 130, new best = 0.32386
- - Update model at epoch 138, new best = 0.30464
-Epoch 140 | Train Loss: 0.3147 | Test Loss (rare): 1.3025 | Time: 1.43s
- - Update model at epoch 140, new best = 0.29583
- - Update model at epoch 142, new best = 0.29382
- - Update model at epoch 154, new best = 0.28695
-Epoch 160 | Train Loss: 0.3088 | Test Loss (rare): 1.3426 | Time: 1.46s
- - Update model at epoch 161, new best = 0.27537
- - Update model at epoch 166, new best = 0.26128
- - Update model at epoch 167, new best = 0.25566
- - Update model at epoch 170, new best = 0.24254
-Epoch 180 | Train Loss: 0.3357 | Test Loss (rare): 1.5399 | Time: 1.46s
- - Update model at epoch 184, new best = 0.23985
- - Update model at epoch 185, new best = 0.21532
- - Update model at epoch 187, new best = 0.19762
- - Update model at epoch 190, new best = 0.19273
-Epoch 200 | Train Loss: 0.2428 | Test Loss (rare): 1.6793 | Time: 1.42s
- - Update model at epoch 206, new best = 0.17591
-Epoch 220 | Train Loss: 0.2989 | Test Loss (rare): 1.6347 | Time: 1.41s
-Epoch 240 | Train Loss: 0.2201 | Test Loss (rare): 1.4981 | Time: 1.41s
-Epoch 260 | Train Loss: 0.1907 | Test Loss (rare): 1.7423 | Time: 1.42s
- - Update model at epoch 264, new best = 0.15541
-Epoch 280 | Train Loss: 0.2598 | Test Loss (rare): 1.7402 | Time: 1.42s
-Epoch 300 | Train Loss: 0.2145 | Test Loss (rare): 1.8481 | Time: 1.42s
- - Update model at epoch 315, new best = 0.13895
- - Update model at epoch 318, new best = 0.12830
-Epoch 320 | Train Loss: 0.1389 | Test Loss (rare): 1.8564 | Time: 1.41s
- - Update model at epoch 334, new best = 0.12762
-Epoch 340 | Train Loss: 0.2051 | Test Loss (rare): 1.8482 | Time: 1.42s
- - Update model at epoch 346, new best = 0.12026
- - Update model at epoch 354, new best = 0.11873
- - Update model at epoch 356, new best = 0.11514
-Epoch 360 | Train Loss: 0.2913 | Test Loss (rare): 1.8040 | Time: 1.42s
-Epoch 380 | Train Loss: 0.4888 | Test Loss (rare): 1.2214 | Time: 1.42s
-Epoch 400 | Train Loss: 0.2244 | Test Loss (rare): 1.8112 | Time: 1.42s
+ - Update model at epoch 0, new best = 1.10231
+ - Update model at epoch 1, new best = 0.96718
+ - Update model at epoch 2, new best = 0.93823
+ - Update model at epoch 3, new best = 0.92673
+ - Update model at epoch 4, new best = 0.90084
+ - Update model at epoch 6, new best = 0.86350
+ - Update model at epoch 14, new best = 0.85632
+ - Update model at epoch 15, new best = 0.85245
+ - Update model at epoch 16, new best = 0.81564
+Epoch  20 | Train Loss: 0.8467 | Test Loss (rare): 0.9864 | Time: 1.43s
+ - Update model at epoch 32, new best = 0.81136
+ - Update model at epoch 33, new best = 0.78644
+Epoch  40 | Train Loss: 0.8112 | Test Loss (rare): 1.1057 | Time: 1.43s
+ - Update model at epoch 41, new best = 0.78223
+ - Update model at epoch 45, new best = 0.77349
+ - Update model at epoch 46, new best = 0.77222
+ - Update model at epoch 56, new best = 0.76698
+ - Update model at epoch 57, new best = 0.76120
+ - Update model at epoch 59, new best = 0.75678
+Epoch  60 | Train Loss: 0.7568 | Test Loss (rare): 1.0709 | Time: 1.43s
+ - Update model at epoch 69, new best = 0.75020
+ - Update model at epoch 71, new best = 0.74779
+ - Update model at epoch 72, new best = 0.73500
+ - Update model at epoch 73, new best = 0.73450
+ - Update model at epoch 76, new best = 0.71815
+Epoch  80 | Train Loss: 0.7304 | Test Loss (rare): 1.1195 | Time: 1.43s
+ - Update model at epoch 80, new best = 0.69883
+ - Update model at epoch 84, new best = 0.69556
+ - Update model at epoch 87, new best = 0.68155
+ - Update model at epoch 88, new best = 0.67651
+ - Update model at epoch 91, new best = 0.66245
+ - Update model at epoch 95, new best = 0.65477
+Epoch 100 | Train Loss: 0.6870 | Test Loss (rare): 1.0724 | Time: 1.43s
+ - Update model at epoch 113, new best = 0.64925
+Epoch 120 | Train Loss: 0.6618 | Test Loss (rare): 1.1151 | Time: 1.42s
+ - Update model at epoch 120, new best = 0.64693
+ - Update model at epoch 122, new best = 0.63010
+Epoch 140 | Train Loss: 0.6545 | Test Loss (rare): 1.0281 | Time: 1.43s
+ - Update model at epoch 143, new best = 0.61257
+Epoch 160 | Train Loss: 0.6498 | Test Loss (rare): 1.0085 | Time: 1.43s
+ - Update model at epoch 171, new best = 0.60310
+Epoch 180 | Train Loss: 0.6291 | Test Loss (rare): 1.0705 | Time: 1.41s
+ - Update model at epoch 182, new best = 0.60236
+ - Update model at epoch 186, new best = 0.59912
+ - Update model at epoch 187, new best = 0.59642
+ - Update model at epoch 198, new best = 0.59261
+Epoch 200 | Train Loss: 0.6141 | Test Loss (rare): 1.0035 | Time: 1.41s
+Epoch 220 | Train Loss: 0.6255 | Test Loss (rare): 1.1465 | Time: 1.42s
+ - Update model at epoch 221, new best = 0.57708
+Epoch 240 | Train Loss: 0.6132 | Test Loss (rare): 1.0430 | Time: 1.41s
+Epoch 260 | Train Loss: 0.6088 | Test Loss (rare): 1.1494 | Time: 1.41s
+Epoch 280 | Train Loss: 0.5902 | Test Loss (rare): 1.0878 | Time: 1.41s
+Epoch 300 | Train Loss: 0.6052 | Test Loss (rare): 1.0714 | Time: 1.41s
 
-Weighted training completed in 581.10s
+Weighted training completed in 431.44s
 
 --- Training classifier on WEIGHTED encoder ---
 
@@ -238,12 +203,12 @@ TRAINING LINEAR CLASSIFIER
 Training for 100 epochs...
 Train representations: torch.Size([5000, 64])
 Test representations: torch.Size([4000, 64])
-Epoch   1 | Loss: 2.1267 | Train Acc: 44.04%
-Epoch  20 | Loss: 1.6763 | Train Acc: 48.14%
-Epoch  40 | Loss: 1.5428 | Train Acc: 50.34%
-Epoch  60 | Loss: 1.4554 | Train Acc: 51.90%
-Epoch  80 | Loss: 1.3941 | Train Acc: 52.98%
-Epoch 100 | Loss: 1.3487 | Train Acc: 53.40%
+Epoch   1 | Loss: 2.0317 | Train Acc: 76.76%
+Epoch  20 | Loss: 0.3306 | Train Acc: 86.26%
+Epoch  40 | Loss: 0.2698 | Train Acc: 87.50%
+Epoch  60 | Loss: 0.2456 | Train Acc: 88.28%
+Epoch  80 | Loss: 0.2351 | Train Acc: 89.08%
+Epoch 100 | Loss: 0.2293 | Train Acc: 89.70%
 
 ============================================================
 CLASSIFICATION RESULTS - WEIGHTED ENCODER
@@ -253,24 +218,24 @@ CLASSIFICATION RESULTS - WEIGHTED ENCODER
 EVALUATING CLASSIFIER ON RARE CLASSES
 ============================================================
 
-Overall Test Accuracy: 25.72%
+Overall Test Accuracy: 68.75%
 
 ------------------------------------------------------------
 RARE CLASS METRICS
 ------------------------------------------------------------
 Class    Support    Precision    Recall       F1-Score    
 ------------------------------------------------------------
-9        400        0.6942       0.4825       0.5693      
-8        400        0.0000       0.0000       0.0000      
-7        400        0.5910       0.7875       0.6752      
-6        400        0.0000       0.0000       0.0000      
-5        400        0.4026       0.3050       0.3471      
+9        400        0.8527       0.8825       0.8673      
+8        400        0.9579       0.9100       0.9333      
+7        400        0.5778       0.4825       0.5259      
+6        400        0.5444       0.3525       0.4279      
+5        400        0.5861       0.6725       0.6263      
 ------------------------------------------------------------
 
 Average across rare classes:
-  Precision: 0.3376
-  Recall:    0.3150
-  F1-Score:  0.3183
+  Precision: 0.7038
+  Recall:    0.6600
+  F1-Score:  0.6762
 ============================================================
 
 ============================================================
