@@ -18,7 +18,7 @@ from torchvision.models import resnet18, ResNet18_Weights
 @dataclass
 class ContrastiveConfig:
     n_samples: int = 5000  # Total samples to use from CIFAR10
-    n_features: int = 28 * 28 * 1
+    n_features: int = 32 * 32 * 3
     n_classes: int = 10
     k_negatives: int = 5
     temperature: float = 0.5
