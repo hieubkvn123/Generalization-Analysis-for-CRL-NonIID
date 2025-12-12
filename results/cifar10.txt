@@ -1,0 +1,309 @@
+============================================================
+WEIGHTED vs UNWEIGHTED INCOMPLETE U-STATISTICS
+CIFAR10 Dataset
+============================================================
+
+Device: cuda
+
+------------------------------------------------------------
+LOADING CIFAR10 DATASET
+------------------------------------------------------------
+Files already downloaded and verified
+Files already downloaded and verified
+
+Class distribution:
+  Dominant class 0: 2250 (45.0%)
+  Rarest 5 classes: [295 267 242 218 202]
+  Total samples: 5000
+
+============================================================
+EXPERIMENT 1: WEIGHTED U-STATISTICS
+============================================================
+
+============================================================
+Training with WEIGHTED incomplete U-statistics
+M=3000 tuples per epoch
+Batch size=64
+Rarest classes: [9, 8, 7, 6, 5] with counts [202 218 242 267 295]
+============================================================
+{(0, True): 0.7614598798363428, (0, False): 1.7142224162598574, (1, True): 1.0834942430111947, (1, False): 1.0834942430111947, (2, True): 1.1331099511467826, (2, False): 1.1331099511467826, (3, True): 1.1807025110953313, (3, False): 1.1807025110953313, (4, True): 1.2259398983605572, (4, False): 1.2259398983605572, (5, True): 1.2671554737626272, (5, False): 1.2671554737626272, (6, True): 1.305328293530686, (6, False): 1.305328293530686, (7, True): 1.3401834241660553, (7, False): 1.3401834241660553, (8, True): 1.3743409799154283, (8, False): 1.3743409799154283, (9, True): 1.3974970060124623, (9, False): 1.3974970060124623}
+ - Update model at epoch 0, new best = 1.78234
+ - Update model at epoch 1, new best = 1.70775
+ - Update model at epoch 2, new best = 1.66767
+ - Update model at epoch 3, new best = 1.66257
+ - Update model at epoch 4, new best = 1.64315
+ - Update model at epoch 5, new best = 1.64075
+ - Update model at epoch 7, new best = 1.60932
+ - Update model at epoch 8, new best = 1.59787
+ - Update model at epoch 10, new best = 1.58341
+ - Update model at epoch 11, new best = 1.56667
+ - Update model at epoch 13, new best = 1.56570
+ - Update model at epoch 14, new best = 1.56105
+ - Update model at epoch 15, new best = 1.54872
+ - Update model at epoch 16, new best = 1.51635
+ - Update model at epoch 19, new best = 1.50160
+Epoch  20 | Train Loss: 1.5016 | Test Loss (rare): 1.6639 | Time: 0.73s
+ - Update model at epoch 21, new best = 1.50001
+ - Update model at epoch 22, new best = 1.48233
+ - Update model at epoch 23, new best = 1.47189
+ - Update model at epoch 25, new best = 1.46266
+ - Update model at epoch 27, new best = 1.45446
+ - Update model at epoch 28, new best = 1.43475
+ - Update model at epoch 29, new best = 1.41471
+ - Update model at epoch 30, new best = 1.40086
+ - Update model at epoch 31, new best = 1.39592
+ - Update model at epoch 33, new best = 1.37822
+ - Update model at epoch 35, new best = 1.37661
+ - Update model at epoch 36, new best = 1.35420
+ - Update model at epoch 39, new best = 1.33815
+Epoch  40 | Train Loss: 1.3381 | Test Loss (rare): 1.7501 | Time: 0.72s
+ - Update model at epoch 41, new best = 1.33130
+ - Update model at epoch 45, new best = 1.31378
+ - Update model at epoch 47, new best = 1.29730
+ - Update model at epoch 49, new best = 1.28502
+ - Update model at epoch 51, new best = 1.27388
+ - Update model at epoch 52, new best = 1.27144
+ - Update model at epoch 53, new best = 1.26259
+ - Update model at epoch 56, new best = 1.25389
+ - Update model at epoch 57, new best = 1.23178
+Epoch  60 | Train Loss: 1.2548 | Test Loss (rare): 1.8636 | Time: 0.72s
+ - Update model at epoch 63, new best = 1.19277
+ - Update model at epoch 73, new best = 1.18897
+ - Update model at epoch 76, new best = 1.17798
+ - Update model at epoch 77, new best = 1.16657
+ - Update model at epoch 78, new best = 1.14701
+Epoch  80 | Train Loss: 1.2047 | Test Loss (rare): 1.7519 | Time: 0.72s
+ - Update model at epoch 81, new best = 1.14147
+ - Update model at epoch 83, new best = 1.14136
+ - Update model at epoch 85, new best = 1.14054
+ - Update model at epoch 93, new best = 1.13109
+ - Update model at epoch 94, new best = 1.11124
+ - Update model at epoch 96, new best = 1.09212
+Epoch 100 | Train Loss: 1.1428 | Test Loss (rare): 1.9744 | Time: 0.74s
+ - Update model at epoch 109, new best = 1.09084
+ - Update model at epoch 111, new best = 1.07110
+ - Update model at epoch 116, new best = 1.06510
+ - Update model at epoch 117, new best = 1.06224
+Epoch 120 | Train Loss: 1.0936 | Test Loss (rare): 1.9310 | Time: 0.71s
+ - Update model at epoch 135, new best = 1.05374
+ - Update model at epoch 138, new best = 1.04638
+Epoch 140 | Train Loss: 1.0567 | Test Loss (rare): 2.0141 | Time: 0.71s
+ - Update model at epoch 144, new best = 1.04576
+ - Update model at epoch 154, new best = 1.04353
+ - Update model at epoch 159, new best = 1.02939
+Epoch 160 | Train Loss: 1.0294 | Test Loss (rare): 1.8013 | Time: 0.72s
+ - Update model at epoch 178, new best = 1.02251
+Epoch 180 | Train Loss: 1.0431 | Test Loss (rare): 1.8452 | Time: 0.71s
+ - Update model at epoch 195, new best = 1.01213
+ - Update model at epoch 199, new best = 1.01149
+Epoch 200 | Train Loss: 1.0115 | Test Loss (rare): 1.9941 | Time: 0.71s
+Epoch 220 | Train Loss: 1.0522 | Test Loss (rare): 2.0433 | Time: 0.71s
+ - Update model at epoch 225, new best = 1.00789
+ - Update model at epoch 226, new best = 1.00205
+ - Update model at epoch 227, new best = 0.98023
+Epoch 240 | Train Loss: 0.9998 | Test Loss (rare): 1.9627 | Time: 0.71s
+Epoch 260 | Train Loss: 0.9883 | Test Loss (rare): 1.9422 | Time: 0.71s
+ - Update model at epoch 265, new best = 0.98012
+ - Update model at epoch 274, new best = 0.97955
+Epoch 280 | Train Loss: 1.0064 | Test Loss (rare): 2.0452 | Time: 0.71s
+ - Update model at epoch 280, new best = 0.96652
+ - Update model at epoch 285, new best = 0.96367
+ - Update model at epoch 289, new best = 0.96267
+Epoch 300 | Train Loss: 0.9780 | Test Loss (rare): 2.1135 | Time: 0.72s
+
+Weighted training completed in 219.75s
+
+--- Training classifier on WEIGHTED encoder ---
+
+============================================================
+TRAINING LINEAR CLASSIFIER
+============================================================
+Training for 100 epochs...
+Train representations: torch.Size([5000, 64])
+Test representations: torch.Size([4000, 64])
+Epoch   1 | Loss: 2.0373 | Train Acc: 65.84%
+Epoch  20 | Loss: 0.7176 | Train Acc: 69.56%
+Epoch  40 | Loss: 0.6551 | Train Acc: 70.76%
+Epoch  60 | Loss: 0.6355 | Train Acc: 70.92%
+Epoch  80 | Loss: 0.6353 | Train Acc: 71.22%
+Epoch 100 | Loss: 0.6296 | Train Acc: 71.80%
+
+============================================================
+CLASSIFICATION RESULTS - WEIGHTED ENCODER
+============================================================
+
+============================================================
+EVALUATING CLASSIFIER ON RARE CLASSES
+============================================================
+
+Overall Test Accuracy: 24.98%
+
+------------------------------------------------------------
+RARE CLASS METRICS
+------------------------------------------------------------
+Class    Support    Precision    Recall       F1-Score    
+------------------------------------------------------------
+9        400        0.0000       0.0000       0.0000      
+8        400        0.2560       0.1600       0.1969      
+7        400        0.4000       0.0200       0.0381      
+6        400        0.2078       0.2400       0.2227      
+5        400        0.2163       0.1325       0.1643      
+------------------------------------------------------------
+
+Average across rare classes:
+  Precision: 0.2160
+  Recall:    0.1105
+  F1-Score:  0.1244
+============================================================
+
+============================================================
+EXPERIMENT 2: UNWEIGHTED U-STATISTICS
+============================================================
+
+============================================================
+Training with UNWEIGHTED incomplete U-statistics
+M=3000 tuples per epoch
+Batch size=64
+Rarest classes: [9, 8, 7, 6, 5] with counts [202 218 242 267 295]
+============================================================
+{(0, True): 0.7614598798363428, (0, False): 1.7142224162598574, (1, True): 1.0834942430111947, (1, False): 1.0834942430111947, (2, True): 1.1331099511467826, (2, False): 1.1331099511467826, (3, True): 1.1807025110953313, (3, False): 1.1807025110953313, (4, True): 1.2259398983605572, (4, False): 1.2259398983605572, (5, True): 1.2671554737626272, (5, False): 1.2671554737626272, (6, True): 1.305328293530686, (6, False): 1.305328293530686, (7, True): 1.3401834241660553, (7, False): 1.3401834241660553, (8, True): 1.3743409799154283, (8, False): 1.3743409799154283, (9, True): 1.3974970060124623, (9, False): 1.3974970060124623}
+ - Update model at epoch 0, new best = 1.71853
+ - Update model at epoch 1, new best = 1.66605
+ - Update model at epoch 2, new best = 1.61037
+ - Update model at epoch 3, new best = 1.58094
+ - Update model at epoch 5, new best = 1.55849
+ - Update model at epoch 6, new best = 1.51617
+ - Update model at epoch 7, new best = 1.50176
+ - Update model at epoch 8, new best = 1.48097
+ - Update model at epoch 9, new best = 1.45221
+ - Update model at epoch 12, new best = 1.44245
+ - Update model at epoch 13, new best = 1.38390
+ - Update model at epoch 14, new best = 1.36732
+ - Update model at epoch 15, new best = 1.34231
+ - Update model at epoch 17, new best = 1.32915
+ - Update model at epoch 18, new best = 1.32223
+ - Update model at epoch 19, new best = 1.31306
+Epoch  20 | Train Loss: 1.3131 | Test Loss (rare): 1.8679 | Time: 0.41s
+ - Update model at epoch 20, new best = 1.29722
+ - Update model at epoch 22, new best = 1.27342
+ - Update model at epoch 23, new best = 1.24932
+ - Update model at epoch 24, new best = 1.24239
+ - Update model at epoch 25, new best = 1.21377
+ - Update model at epoch 26, new best = 1.20879
+ - Update model at epoch 27, new best = 1.19053
+ - Update model at epoch 32, new best = 1.14596
+ - Update model at epoch 34, new best = 1.14377
+ - Update model at epoch 35, new best = 1.12385
+ - Update model at epoch 36, new best = 1.11116
+ - Update model at epoch 37, new best = 1.10174
+Epoch  40 | Train Loss: 1.2171 | Test Loss (rare): 1.8257 | Time: 0.40s
+ - Update model at epoch 42, new best = 1.09136
+ - Update model at epoch 43, new best = 1.06643
+ - Update model at epoch 46, new best = 1.04469
+ - Update model at epoch 48, new best = 1.00480
+ - Update model at epoch 49, new best = 1.00307
+ - Update model at epoch 50, new best = 0.99781
+ - Update model at epoch 53, new best = 0.96549
+ - Update model at epoch 55, new best = 0.96155
+ - Update model at epoch 56, new best = 0.94562
+ - Update model at epoch 58, new best = 0.91388
+Epoch  60 | Train Loss: 0.9145 | Test Loss (rare): 2.0328 | Time: 0.40s
+ - Update model at epoch 60, new best = 0.91052
+ - Update model at epoch 61, new best = 0.90426
+ - Update model at epoch 64, new best = 0.88928
+ - Update model at epoch 70, new best = 0.87593
+ - Update model at epoch 74, new best = 0.86291
+ - Update model at epoch 75, new best = 0.84852
+ - Update model at epoch 76, new best = 0.84128
+ - Update model at epoch 79, new best = 0.83883
+Epoch  80 | Train Loss: 0.8388 | Test Loss (rare): 2.0568 | Time: 0.40s
+ - Update model at epoch 80, new best = 0.83763
+ - Update model at epoch 81, new best = 0.82958
+ - Update model at epoch 88, new best = 0.80385
+ - Update model at epoch 91, new best = 0.79173
+ - Update model at epoch 94, new best = 0.77922
+ - Update model at epoch 98, new best = 0.77350
+Epoch 100 | Train Loss: 0.7990 | Test Loss (rare): 2.0426 | Time: 0.39s
+ - Update model at epoch 101, new best = 0.76806
+ - Update model at epoch 114, new best = 0.75018
+ - Update model at epoch 118, new best = 0.74849
+ - Update model at epoch 119, new best = 0.74082
+Epoch 120 | Train Loss: 0.7408 | Test Loss (rare): 2.0713 | Time: 0.40s
+ - Update model at epoch 122, new best = 0.73435
+ - Update model at epoch 123, new best = 0.72984
+ - Update model at epoch 129, new best = 0.72819
+ - Update model at epoch 135, new best = 0.72242
+Epoch 140 | Train Loss: 0.7662 | Test Loss (rare): 1.8867 | Time: 0.39s
+ - Update model at epoch 145, new best = 0.71458
+ - Update model at epoch 147, new best = 0.71109
+ - Update model at epoch 157, new best = 0.70317
+Epoch 160 | Train Loss: 0.7258 | Test Loss (rare): 2.1522 | Time: 0.41s
+ - Update model at epoch 163, new best = 0.70096
+ - Update model at epoch 170, new best = 0.68870
+ - Update model at epoch 173, new best = 0.67976
+Epoch 180 | Train Loss: 0.6914 | Test Loss (rare): 1.9592 | Time: 0.41s
+ - Update model at epoch 184, new best = 0.67850
+ - Update model at epoch 196, new best = 0.65995
+Epoch 200 | Train Loss: 0.7182 | Test Loss (rare): 2.0512 | Time: 0.39s
+ - Update model at epoch 210, new best = 0.63981
+Epoch 220 | Train Loss: 0.6556 | Test Loss (rare): 2.1613 | Time: 0.40s
+ - Update model at epoch 237, new best = 0.63673
+ - Update model at epoch 238, new best = 0.62548
+Epoch 240 | Train Loss: 0.6678 | Test Loss (rare): 2.0293 | Time: 0.40s
+Epoch 260 | Train Loss: 0.6323 | Test Loss (rare): 2.2823 | Time: 0.39s
+ - Update model at epoch 272, new best = 0.59811
+Epoch 280 | Train Loss: 0.6281 | Test Loss (rare): 2.1077 | Time: 0.39s
+Epoch 300 | Train Loss: 0.6406 | Test Loss (rare): 2.2534 | Time: 0.40s
+
+Unweighted training completed in 122.36s
+
+--- Training classifier on UNWEIGHTED encoder ---
+
+============================================================
+TRAINING LINEAR CLASSIFIER
+============================================================
+Training for 100 epochs...
+Train representations: torch.Size([5000, 64])
+Test representations: torch.Size([4000, 64])
+Epoch   1 | Loss: 2.0385 | Train Acc: 62.84%
+Epoch  20 | Loss: 0.8231 | Train Acc: 67.26%
+Epoch  40 | Loss: 0.7791 | Train Acc: 68.36%
+Epoch  60 | Loss: 0.7749 | Train Acc: 68.48%
+Epoch  80 | Loss: 0.7682 | Train Acc: 68.64%
+Epoch 100 | Loss: 0.7717 | Train Acc: 68.80%
+
+============================================================
+CLASSIFICATION RESULTS - UNWEIGHTED ENCODER
+============================================================
+
+============================================================
+EVALUATING CLASSIFIER ON RARE CLASSES
+============================================================
+
+Overall Test Accuracy: 24.68%
+
+------------------------------------------------------------
+RARE CLASS METRICS
+------------------------------------------------------------
+Class    Support    Precision    Recall       F1-Score    
+------------------------------------------------------------
+9        400        0.2000       0.0025       0.0049      
+8        400        0.3596       0.1600       0.2215      
+7        400        0.0000       0.0000       0.0000      
+6        400        0.2344       0.0750       0.1136      
+5        400        0.2320       0.1125       0.1515      
+------------------------------------------------------------
+
+Average across rare classes:
+  Precision: 0.2052
+  Recall:    0.0700
+  F1-Score:  0.0983
+============================================================
+
+============================================================
+GENERATING COMPARISON PLOTS
+============================================================
+
+============================================================
+ALL EXPERIMENTS COMPLETED!
+============================================================
