@@ -216,7 +216,6 @@ class ContrastiveTupleDataset(Dataset):
         # Precompute class information
         n_classes = int(labels.max().item()) + 1
         class_counts = torch.bincount(labels, minlength=n_classes).float()
-        print('Class Counts:', class_counts)
         self.class_probs = class_counts / class_counts.sum()
         
         # Precompute class indices for faster sampling
