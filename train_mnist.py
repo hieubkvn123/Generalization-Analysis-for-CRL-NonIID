@@ -20,7 +20,7 @@ class ContrastiveConfig:
     n_samples: int = 5000  # Total samples to use from MNIST
     n_features: int = 28 * 28 * 1
     n_classes: int = 10
-    k_negatives: int = 5
+    k_negatives: int = 7
     temperature: float = 0.5
     batch_size: int = 64  # Reduced for image processing
     m_incomplete: int = 3000  # sub-sampled tuples 
@@ -232,6 +232,8 @@ class ContrastiveTupleDataset(Dataset):
 
         # Precompute all weights
         self.weights, self.minor_classes = self.precompute_weights()
+        for r in self.classes:
+            print(f'Weight for class {r}: {self.weights[(r, True)]}, {self.weights[(r, False)]}')
     
     def __len__(self):
         return self.num_tuples
@@ -276,7 +278,6 @@ class ContrastiveTupleDataset(Dataset):
             else:
                 weights[(r, True)] = (1 / (1 - self.tau_hat)) - threshold * (1/((1-self.tau_hat) * (self.class_counts[r] - 2)))
                 weights[(r, False)] = 1 / (1 - self.tau_hat)
-        print(weights)
         return weights, minor_classes
 
     
