@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from collections import Counter
 from torch.utils.data import Dataset, DataLoader
 from dataclasses import dataclass
 import time
@@ -203,33 +204,43 @@ def extract_features(images, feature_extractor, device, batch_size=128):
 # Contrastive Tuple Dataset
 # -----------------------------------------------------
 class ContrastiveTupleDataset(Dataset):
-    def __init__(self, X, labels, k_negatives, num_tuples, tau_hat, 
-                 use_weighting=True, avoid_collision=False):
+    def __init__(self, X, labels, k_negatives, num_tuples, use_weighting=True, avoid_collision=False):
         self.X = X
-        self.labels = labels
+        self.N = len(X)
         self.k = k_negatives
+        self.labels = labels.cpu().numpy()
         self.num_tuples = num_tuples
-        self.tau_hat = tau_hat
         self.use_weighting = use_weighting
         self.avoid_collision = avoid_collision
         
         # Precompute class information
-        n_classes = int(labels.max().item()) + 1
-        class_counts = torch.bincount(labels, minlength=n_classes).float()
-        self.class_probs = class_counts / class_counts.sum()
+        self.R = len(np.unique(self.labels)) 
+        self.classes = list(np.unique(self.labels))
+        self.class_counts = dict(Counter(self.labels))
+        self.class_probs  = {x: y/len(self.labels) for x, y in self.class_counts.items()}
+        self.tau_hat = self.compute_tauhat()
         
         # Precompute class indices for faster sampling
         self.class_indices = {}
-        for c in range(n_classes):
+        for c in range(self.R):
             self.class_indices[c] = torch.where(labels == c)[0].tolist()
 
         # Precompute negative indices
-        self.class_to_neg_indices = {c:[] for c in range(n_classes)}
-        for c in range(n_classes):
+        self.class_to_neg_indices = {c:[] for c in range(self.R)}
+        for c in range(self.R):
             self.class_to_neg_indices[c] = [i for i in range(len(self.X)) if self.labels[i] != c]
+
+        # Precompute all weights
+        self.weights, self.minor_classes = self.precompute_weights()
     
     def __len__(self):
         return self.num_tuples
+
+    def compute_tauhat(self):
+        tau = 0.0
+        for _, rho_hat in self.class_probs.items():
+            tau += rho_hat * ((1 - rho_hat) ** self.k)
+        return tau
     
     def sample_tuple(self, class_r):
         class_indices = self.class_indices[class_r]
@@ -238,19 +249,36 @@ class ContrastiveTupleDataset(Dataset):
             return None
         
         anchor_idx, pos_idx = random.sample(class_indices, 2)
+        anchor_label = self.labels[anchor_idx].item()
         
-        if self.avoid_collision:
+        if self.avoid_collision or anchor_label in self.minor_classes:
             available = self.class_to_neg_indices[class_r]
         else:
-            available = [i for i in range(len(self.X)) 
-                        if i not in (anchor_idx, pos_idx)]
-        
-        if len(available) < self.k:
-            return None
+            available = [i for i in range(len(self.X)) if i not in (anchor_idx, pos_idx)]
+        if len(available) < self.k: return None
         
         neg_indices = random.sample(available, self.k)
-        
         return (anchor_idx, pos_idx, neg_indices)
+
+    def precompute_weights(self):
+        weights = {}
+        minor_classes = []
+        for r in self.classes:
+            weights[(r, True)] = weights[(r, False)] = 0.0
+
+        threshold = (3 * self.tau_hat * (self.N - 2)) / self.k
+        for r in self.classes:
+            if self.class_counts[r] <= threshold:
+                product = np.prod((self.N - np.arange(self.k) - self.class_counts[r]) / (self.N - np.arange(self.k) - 2))
+                weights[(r, True)] = (1 / (1 - self.tau_hat)) * product
+                weights[(r, False)] = weights[(r, True)]
+                minor_classes.append(r)
+            else:
+                weights[(r, True)] = (1 / (1 - self.tau_hat)) - threshold * (1/((1-self.tau_hat) * (self.class_counts[r] - 2)))
+                weights[(r, False)] = 1 / (1 - self.tau_hat)
+        print(weights)
+        return weights, minor_classes
+
     
     def compute_weight(self, tuple_indices):
         if not self.use_weighting:
@@ -258,16 +286,14 @@ class ContrastiveTupleDataset(Dataset):
         
         anchor_idx, pos_idx, neg_indices = tuple_indices
         anchor_label = self.labels[anchor_idx].item()
-        
         has_collision = any(self.labels[n].item() == anchor_label for n in neg_indices)
-        
-        if not has_collision:
-            return 1.0 / (1.0 - self.tau_hat)
-        else:
-            return 0.5 * (self.tau_hat / (1.0 - self.tau_hat))
+        return self.weights[(anchor_label, has_collision)]
     
     def __getitem__(self, idx):
-        class_r = int(torch.multinomial(self.class_probs, 1).item())
+        class_r = np.random.choice(
+            list(self.class_probs.keys()),
+            p=list(self.class_probs.values())
+        ) 
         
         max_attempts = 10
         for _ in range(max_attempts):
@@ -432,7 +458,6 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test,
         X_train, labels_train, 
         config.k_negatives, 
         config.m_incomplete,
-        tau_hat,
         use_weighting=use_weighting,
         avoid_collision=avoid_collision
     )
@@ -849,35 +874,6 @@ def main():
     print("LOADING MNIST DATASET")
     print("-"*60)
     X_train_img, labels_train, X_test_img, labels_test, class_sizes = load_mnist_imbalanced(config)
-    
-    # Train UNWEIGHTED
-    print("\n" + "="*60)
-    print("EXPERIMENT 2: UNWEIGHTED U-STATISTICS")
-    print("="*60)
-    start_time = time.time()
-    results_unweighted = train_contrastive_model(
-        X_train_img, labels_train, X_test_img, labels_test,
-        config, n_epochs=300, use_weighting=False, avoid_collision=True
-    )
-    unweighted_time = time.time() - start_time
-    encoder_unweighted, _, _, _, rarest_classes = results_unweighted
-    print(f"\nUnweighted training completed in {unweighted_time:.2f}s")
-
-    # Train classifier unweighted
-    print("\n--- Training classifier on UNWEIGHTED encoder ---")
-    classifier_unweighted = train_linear_classifier(
-        encoder_unweighted, X_train_img, labels_train,
-        X_test_img, labels_test, config, device, n_epochs=100
-    )
-
-    # Evaluate classifier - unweighted
-    print("\n" + "="*60)
-    print("CLASSIFICATION RESULTS - UNWEIGHTED ENCODER")
-    print("="*60)
-    metrics_unweighted, acc_unweighted = evaluate_classifier_rare_classes(
-        classifier_unweighted, encoder_unweighted, X_test_img, labels_test,
-        rarest_classes, config, device
-    )
 
     # Train WEIGHTED
     print("\n" + "="*60)
@@ -905,6 +901,35 @@ def main():
     print("="*60)
     metrics_weighted, acc_weighted = evaluate_classifier_rare_classes(
         classifier_weighted, encoder_weighted, X_test_img, labels_test,
+        rarest_classes, config, device
+    )
+    
+    # Train UNWEIGHTED
+    print("\n" + "="*60)
+    print("EXPERIMENT 2: UNWEIGHTED U-STATISTICS")
+    print("="*60)
+    start_time = time.time()
+    results_unweighted = train_contrastive_model(
+        X_train_img, labels_train, X_test_img, labels_test,
+        config, n_epochs=300, use_weighting=False, avoid_collision=True
+    )
+    unweighted_time = time.time() - start_time
+    encoder_unweighted, _, _, _, rarest_classes = results_unweighted
+    print(f"\nUnweighted training completed in {unweighted_time:.2f}s")
+
+    # Train classifier unweighted
+    print("\n--- Training classifier on UNWEIGHTED encoder ---")
+    classifier_unweighted = train_linear_classifier(
+        encoder_unweighted, X_train_img, labels_train,
+        X_test_img, labels_test, config, device, n_epochs=100
+    )
+
+    # Evaluate classifier - unweighted
+    print("\n" + "="*60)
+    print("CLASSIFICATION RESULTS - UNWEIGHTED ENCODER")
+    print("="*60)
+    metrics_unweighted, acc_unweighted = evaluate_classifier_rare_classes(
+        classifier_unweighted, encoder_unweighted, X_test_img, labels_test,
         rarest_classes, config, device
     )
 
