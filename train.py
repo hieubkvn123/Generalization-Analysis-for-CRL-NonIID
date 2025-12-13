@@ -732,7 +732,7 @@ def pca_2d(X):
     return Z
 
 def visualize_rare_class_embeddings(X_test, labels_test, encoder_weighted, encoder_unweighted, 
-                                   rarest_classes, config, device):
+                                   rarest_classes, config, device, title='mnist'):
     mask = np.isin(labels_test, rarest_classes)
     X_rare = X_test[mask].to(device)
     labels_rare = labels_test[mask].to(device)
@@ -817,7 +817,7 @@ def visualize_rare_class_embeddings(X_test, labels_test, encoder_weighted, encod
                   fontsize=16, fontweight='bold')
 
     plt.tight_layout()
-    plt.savefig('results/mnist_rare_class_embeddings.pdf', dpi=150, bbox_inches='tight')
+    plt.savefig(f'results/{title}_rare_class_embeddings.pdf', dpi=150, bbox_inches='tight')
     plt.show()
     
     print("\n" + "="*60)
@@ -838,7 +838,7 @@ def visualize_rare_class_embeddings(X_test, labels_test, encoder_weighted, encod
 # -----------------------------------------------------
 # Visualization comparison
 # -----------------------------------------------------
-def visualize_comparison(results_weighted, results_unweighted, class_sizes):
+def visualize_comparison(results_weighted, results_unweighted, class_sizes, title='mnist'):
     fig, ax = plt.subplots(figsize=(10, 6))
     
     _, loss_w, test_loss_w, final_test_w, rarest = results_weighted
@@ -861,7 +861,7 @@ def visualize_comparison(results_weighted, results_unweighted, class_sizes):
     ax.legend(fontsize=16)
     ax.grid(True, alpha=0.3, axis='y')
     
-    plt.savefig('results/mnist_comparison_results.pdf', dpi=300, bbox_inches='tight')
+    plt.savefig(f'results/{title}_comparison_results.pdf', dpi=300, bbox_inches='tight')
     plt.show()
 
 # -----------------------------------------------------
@@ -943,7 +943,7 @@ def main(config):
     print("\n" + "="*60)
     print("GENERATING COMPARISON PLOTS")
     print("="*60)
-    visualize_comparison(results_weighted, results_unweighted, class_sizes)
+    visualize_comparison(results_weighted, results_unweighted, class_sizes, title=config.dataset)
 
     print("\n" + "="*60)
     print("ALL EXPERIMENTS COMPLETED!")
@@ -951,5 +951,5 @@ def main(config):
 
 
 if __name__ == '__main__':
-    config = ContrastiveConfig(dataset='cifar10')
+    config = ContrastiveConfig(dataset='mnist', k_negatives=5)
     main(config)
