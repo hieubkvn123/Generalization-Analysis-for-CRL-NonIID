@@ -12,19 +12,26 @@ from tsne import tsne_2d
 from torchvision import datasets, transforms
 from torchvision.models import resnet18, ResNet18_Weights
 
+
+# -----------------------------------------------------
+# CONSTANTS 
+# -----------------------------------------------------
+DATASET_MAP = { 'mnist': datasets.MNIST, 'fashion_mnist': datasets.FashionMNIST, 'cifar10': datasets.CIFAR10 }
+DATASET_TO_INDIM = { 'mnist': 784, 'fashion_mnist': 784, 'cifar10': 3072 }
+
 # -----------------------------------------------------
 # Configuration
 # -----------------------------------------------------
 @dataclass
 class ContrastiveConfig:
-    n_samples: int = 5000  # Total samples to use from MNIST
-    n_features: int = 28 * 28 * 1
+    n_samples: int = 5000  
     n_classes: int = 10
-    k_negatives: int = 7
+    k_negatives: int = 5
     temperature: float = 0.5
     batch_size: int = 64  # Reduced for image processing
     m_incomplete: int = 3000  # sub-sampled tuples 
     test_size: int = 4000  # test samples
+    dataset: str = 'mnist'
 
 # -----------------------------------------------------
 # Feature Extractor 
@@ -72,25 +79,25 @@ class LinearClassifier(nn.Module):
         return self.linear(x)
 
 # -----------------------------------------------------
-# Load and subsample MNIST
+# Load and subsample 
 # -----------------------------------------------------
-def load_mnist_imbalanced(config, seed=42):
-    """
-    Load MNIST and create highly imbalanced subset
-    """
+def load_imbalanced_dataset(config, seed=42):
     np.random.seed(seed)
     random.seed(seed)
     torch.manual_seed(seed)
     
     # Define transforms
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        # transforms.Normalize(mean=[0.5071, 0.4867, 0.4408], std=[0.2675, 0.2565, 0.2761])
-    ])
-    
-    # Load full MNIST dataset
-    train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
-    test_dataset = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+    transform = transforms.Compose([ transforms.ToTensor() ])
+    if config.dataset == 'cifar10':
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5071, 0.4867, 0.4408], std=[0.2675, 0.2565, 0.2761])
+        ])
+
+    # Load full dataset
+    dataclass = DATASET_MAP[config.dataset]
+    train_dataset = dataclass(root='./data', train=True,  download=True, transform=transform)
+    test_dataset  = dataclass(root='./data', train=False, download=True, transform=transform)
     
     # Convert to numpy for processing
     train_images = []
@@ -435,7 +442,7 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test,
     X_test = X_test.to(device)
     labels_test = labels_test.to(device)
     
-    encoder = SimpleEncoder(config.n_features, hidden_dim=128, output_dim=64).to(device)
+    encoder = SimpleEncoder(DATASET_TO_INDIM[config.dataset], hidden_dim=128, output_dim=64).to(device)
     optimizer = torch.optim.Adam(encoder.parameters(), lr=1e-3, amsgrad=True)
     
     tau_hat = estimate_collision_probability(labels_train, config.k_negatives)
@@ -860,21 +867,19 @@ def visualize_comparison(results_weighted, results_unweighted, class_sizes):
 # -----------------------------------------------------
 # Main
 # -----------------------------------------------------
-def main():
+def main(config):
     print("="*60)
-    print("WEIGHTED vs UNWEIGHTED INCOMPLETE U-STATISTICS")
-    print("MNIST Dataset")
+    print(f"{config.dataset.upper()} Dataset")
     print("="*60)
     
-    config = ContrastiveConfig()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\nDevice: {device}")
     
-    # Load MNIST
+    # Load dataset 
     print("\n" + "-"*60)
-    print("LOADING MNIST DATASET")
+    print(f"LOADING {config.dataset.upper()} DATASET")
     print("-"*60)
-    X_train_img, labels_train, X_test_img, labels_test, class_sizes = load_mnist_imbalanced(config)
+    X_train_img, labels_train, X_test_img, labels_test, class_sizes = load_imbalanced_dataset(config)
 
     # Train WEIGHTED
     print("\n" + "="*60)
@@ -946,4 +951,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    config = ContrastiveConfig(dataset='cifar10')
+    main(config)
