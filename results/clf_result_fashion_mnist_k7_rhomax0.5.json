@@ -1,0 +1,1 @@
+{"weighted": {"overall_acc": 26.3, "avg_precision": 0.24581288143778016, "avg_recall": 0.32599999999999996, "avg_f1": 0.2764360095308927}, "unweighted": {"overall_acc": 53.925, "avg_precision": 0.39670729010466366, "avg_recall": 0.446, "avg_f1": 0.40514566326463886}}
