@@ -1,16 +1,17 @@
+import time
+import json
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+from collections import Counter
+from dataclasses import dataclass
+from argparse import ArgumentParser
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-from collections import Counter
-from torch.utils.data import Dataset, DataLoader
-from dataclasses import dataclass
-import time
-import random
-import matplotlib.pyplot as plt
-from tsne import tsne_2d
 from torchvision import datasets, transforms
-from torchvision.models import resnet18, ResNet18_Weights
+from torch.utils.data import Dataset, DataLoader
 
 
 # -----------------------------------------------------
@@ -32,13 +33,6 @@ class ContrastiveConfig:
     m_incomplete: int = 3000  # sub-sampled tuples 
     test_size: int = 4000  # test samples
     dataset: str = 'mnist'
-
-# -----------------------------------------------------
-# Feature Extractor 
-# -----------------------------------------------------
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
 # -----------------------------------------------------
 # Simple encoder
@@ -413,8 +407,6 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test,
     encoder = SimpleEncoder(DATASET_TO_INDIM[config.dataset], hidden_dim=128, output_dim=64).to(device)
     optimizer = torch.optim.Adam(encoder.parameters(), lr=1e-3, amsgrad=True)
     
-    tau_hat = estimate_collision_probability(labels_train, config.k_negatives)
-    
     loss_history = []
     test_loss_history = []
     
@@ -605,10 +597,7 @@ def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, r
     overall_acc = (predictions == labels_np).mean() * 100
     
     # Compute precision and recall manually for each class
-    precision = {}
-    recall = {}
-    f1 = {}
-    support = {}
+    f1, recall, precision, accuracy, support = {}, {}, {}, {}, {}
     
     for c in range(config.n_classes):
         # True positives: predicted as c AND actually c
@@ -664,6 +653,12 @@ def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, r
     avg_precision = np.mean([rare_metrics[c]['precision'] for c in rarest_classes])
     avg_recall = np.mean([rare_metrics[c]['recall'] for c in rarest_classes])
     avg_f1 = np.mean([rare_metrics[c]['f1'] for c in rarest_classes])
+    results = {
+        'overall_acc': overall_acc,
+        'avg_precision': avg_precision,
+        'avg_recall': avg_recall,
+        'avg_f1': avg_f1
+    }
     
     print(f"\nAverage across rare classes:")
     print(f"  Precision: {avg_precision:.4f}")
@@ -671,7 +666,7 @@ def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, r
     print(f"  F1-Score:  {avg_f1:.4f}")
     print("="*60)
     
-    return rare_metrics, overall_acc
+    return results
 
 # -----------------------------------------------------
 # PCA Visualization
@@ -838,6 +833,8 @@ def main(config):
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\nDevice: {device}")
+    print(f"Number of negative samples: {config.k_negatives}")
+    print(f"Number of sub-sampled tuples: {config.m_incomplete}")
     
     # Load dataset 
     print("\n" + "-"*60)
@@ -869,7 +866,7 @@ def main(config):
     print("\n" + "="*60)
     print("CLASSIFICATION RESULTS - WEIGHTED ENCODER")
     print("="*60)
-    metrics_weighted, acc_weighted = evaluate_classifier_rare_classes(
+    clf_result_weighted = evaluate_classifier_rare_classes(
         classifier_weighted, encoder_weighted, X_test_img, labels_test,
         rarest_classes, config, device
     )
@@ -898,7 +895,7 @@ def main(config):
     print("\n" + "="*60)
     print("CLASSIFICATION RESULTS - UNWEIGHTED ENCODER")
     print("="*60)
-    metrics_unweighted, acc_unweighted = evaluate_classifier_rare_classes(
+    clf_result_unweighted = evaluate_classifier_rare_classes(
         classifier_unweighted, encoder_unweighted, X_test_img, labels_test,
         rarest_classes, config, device
     )
@@ -908,6 +905,8 @@ def main(config):
     print("GENERATING COMPARISON PLOTS")
     print("="*60)
     visualize_comparison(results_weighted, results_unweighted, class_sizes, title=config.dataset)
+    with open(f"results/clf_result_{config.dataset}.json", "w") as f:
+        json.dump({'weighted': clf_result_weighted, 'unweighted': clf_result_unweighted}, f)
 
     print("\n" + "="*60)
     print("ALL EXPERIMENTS COMPLETED!")
@@ -915,10 +914,11 @@ def main(config):
 
 
 if __name__ == '__main__':
-    from argparse import ArgumentParser
     parser = ArgumentParser()
+    parser.add_argument('--dataset', type=str, required=False, default='mnist', choices=['mnist', 'fashion_mnist', 'cifar10'], help='Real Dataset')
     parser.add_argument('--k', type=int, required=False, default=5, help='Number of negative samples')
     args = vars(parser.parse_args())
 
-    config = ContrastiveConfig(dataset='mnist', k_negatives=args['k'])
+    # Run main
+    config = ContrastiveConfig(k_negatives=args['k'], dataset=args['dataset'])
     main(config)
