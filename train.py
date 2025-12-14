@@ -256,8 +256,9 @@ class ContrastiveTupleDataset(Dataset):
                 weights[(r, False)] = weights[(r, True)]
                 minor_classes.append(r)
             else:
-                weights[(r, True)] = (1 / (1 - self.tau_hat)) - threshold * (1/((1-self.tau_hat) * (self.class_counts[r] - 2)))
+                weights[(r, True)]  = (1 / (1 - self.tau_hat)) - threshold * (1/((1-self.tau_hat) * (self.class_counts[r] - 2)))
                 weights[(r, False)] = 1 / (1 - self.tau_hat)
+                weights[(r, True)] *= 0.5
         return weights, minor_classes
 
     
@@ -324,30 +325,6 @@ def batched_contrastive_loss(anchors, positives, negatives, temperature):
     return losses
 
 # -----------------------------------------------------
-# Tuple sampler for evaluation
-# -----------------------------------------------------
-def sample_tuple(X, labels, k, class_r, avoid_collision=False):
-    class_indices = torch.where(labels == class_r)[0]
-
-    if len(class_indices) < 2:
-        return None
-
-    anchor_idx, pos_idx = random.sample(class_indices.tolist(), 2)
-
-    if avoid_collision:
-        available = [i for i in range(len(X)) 
-                    if i not in (anchor_idx, pos_idx) and labels[i] != class_r]
-    else:
-        available = [i for i in range(len(X)) if i not in (anchor_idx, pos_idx)]
-    
-    if len(available) < k:
-        return None
-    
-    neg_indices = random.sample(available, k)
-
-    return (anchor_idx, pos_idx, neg_indices)
-
-# -----------------------------------------------------
 # Single tuple loss
 # -----------------------------------------------------
 def contrastive_loss(anchor, positive, negatives, temperature):
@@ -360,8 +337,9 @@ def contrastive_loss(anchor, positive, negatives, temperature):
 # -----------------------------------------------------
 # Evaluate on specific classes
 # -----------------------------------------------------
-def evaluate_on_classes(X, labels, encoder, config, device, target_classes):
+def evaluate_on_classes(test_dataset, encoder, config, device, target_classes):
     encoder.eval()
+    X = test_dataset.X
     
     losses_per_class = {c: [] for c in target_classes}
     n_samples_per_class = 50
@@ -369,10 +347,9 @@ def evaluate_on_classes(X, labels, encoder, config, device, target_classes):
     with torch.no_grad():
         for c in target_classes:
             for _ in range(n_samples_per_class):
-                t = sample_tuple(X, labels, config.k_negatives, c)
+                t = test_dataset.sample_tuple(c)
                 if t is None:
                     continue
-                
                 anchor_idx, pos_idx, neg_indices = t
                 
                 z_anchor = encoder(X[anchor_idx:anchor_idx+1])[0]
@@ -429,6 +406,14 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test,
         use_weighting=use_weighting,
         avoid_collision=avoid_collision
     )
+
+    test_dataset = ContrastiveTupleDataset(
+        X_test, labels_test, 
+        config.k_negatives, 
+        config.m_incomplete,
+        use_weighting=False,
+        avoid_collision=True
+    )
     
     dataloader = DataLoader(
         dataset, 
@@ -480,7 +465,7 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test,
             print(f' - Update model at epoch {epoch}, new best = {best_loss:.5f}')
         
         if (epoch + 1) % 20 == 0:
-            test_losses = evaluate_on_classes(X_test, labels_test, encoder, config, device, rarest_classes)
+            test_losses = evaluate_on_classes(test_dataset, encoder, config, device, rarest_classes)
             avg_test_loss = np.mean([v for v in test_losses.values() if not np.isnan(v)])
             test_loss_history.append(avg_test_loss)
             
@@ -489,8 +474,7 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test,
     
     # Load best model
     encoder.load_state_dict(best_model)
-    
-    final_test_losses = evaluate_on_classes(X_test, labels_test, encoder, config, device, rarest_classes)
+    final_test_losses = evaluate_on_classes(test_dataset, encoder, config, device, rarest_classes)
     
     return encoder, loss_history, test_loss_history, final_test_losses, rarest_classes
 
@@ -904,7 +888,7 @@ def main(config):
     print("GENERATING COMPARISON PLOTS")
     print("="*60)
     visualize_comparison(results_weighted, results_unweighted, class_sizes, title=config.dataset)
-    with open(f"results/clf_result_{config.dataset}_k{config.k_negatives}.json", "w") as f:
+    with open(f"results/clf_result_{config.dataset}_k{config.k_negatives}_rhomax{config.rho_max}.json", "w") as f:
         json.dump({'weighted': clf_result_weighted, 'unweighted': clf_result_unweighted}, f)
 
     print("\n" + "="*60)
@@ -921,5 +905,5 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
 
     # Run main
-    config = ContrastiveConfig(k_negatives=args['k'], dataset=args['dataset'], m_incomplete=args['M'])
+    config = ContrastiveConfig(k_negatives=args['k'], dataset=args['dataset'], m_incomplete=args['M'], rho_max=args['rho_max'])
     main(config)
