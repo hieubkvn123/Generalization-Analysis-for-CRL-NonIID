@@ -28,6 +28,7 @@ class ContrastiveConfig:
     n_samples: int = 5000  
     n_classes: int = 10
     k_negatives: int = 5
+    rho_max: float = 0.45
     temperature: float = 0.5
     batch_size: int = 64  # Reduced for image processing
     m_incomplete: int = 3000  # sub-sampled tuples 
@@ -118,8 +119,7 @@ def load_imbalanced_dataset(config, seed=42):
     
     # Generate class distribution: first class gets 45%, rest distributed exponentially
     class_sizes = np.zeros(n_classes, dtype=int)
-    class_sizes[0] = int(0.45 * n)  # Dominant class: 45%
-    
+    class_sizes[0] = int(config.rho_max * n)  # Dominant class: 45%
     remaining = n - class_sizes[0]
     
     # Exponentially decreasing for remaining classes
@@ -494,8 +494,7 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test,
     
     return encoder, loss_history, test_loss_history, final_test_losses, rarest_classes
 
-def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test, 
-                           config, device, n_epochs=100):
+def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test, config, device, n_epochs=100):
     """
     Train a linear classifier on top of frozen encoder representations
     """
@@ -524,7 +523,7 @@ def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test,
     
     embedding_dim = train_reps.shape[1]
     classifier = LinearClassifier(embedding_dim, config.n_classes).to(device)
-    optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-3, amsgrad=True)
     criterion = nn.CrossEntropyLoss()
     
     # Create dataloader
@@ -916,9 +915,11 @@ def main(config):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--dataset', type=str, required=False, default='mnist', choices=['mnist', 'fashion_mnist', 'cifar10'], help='Real Dataset')
+    parser.add_argument('--rho_max', type=float, required=False, default=0.45, help='Probability of dominant class')
     parser.add_argument('--k', type=int, required=False, default=5, help='Number of negative samples')
+    parser.add_argument('--M', type=int, required=False, default=3000, help='Number of sub-sampled tuples')
     args = vars(parser.parse_args())
 
     # Run main
-    config = ContrastiveConfig(k_negatives=args['k'], dataset=args['dataset'])
+    config = ContrastiveConfig(k_negatives=args['k'], dataset=args['dataset'], m_incomplete=args['M'])
     main(config)
