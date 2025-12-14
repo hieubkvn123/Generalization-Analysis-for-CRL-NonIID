@@ -604,11 +604,7 @@ def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test,
     
     return classifier
 
-def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, 
-                                     rarest_classes, config, device):
-    """
-    Evaluate precision and recall for rare classes (without sklearn)
-    """
+def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, rarest_classes, config, device):
     print("\n" + "="*60)
     print("EVALUATING CLASSIFIER ON RARE CLASSES")
     print("="*60)
