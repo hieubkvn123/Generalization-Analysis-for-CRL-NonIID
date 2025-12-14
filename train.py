@@ -117,9 +117,9 @@ def load_imbalanced_dataset(config, seed=42):
     n = config.n_samples
     n_classes = config.n_classes
     
-    # Generate class distribution: first class gets 45%, rest distributed exponentially
+    # Generate class distribution
     class_sizes = np.zeros(n_classes, dtype=int)
-    class_sizes[0] = int(config.rho_max * n)  # Dominant class: 45%
+    class_sizes[0] = int(config.rho_max * n)
     remaining = n - class_sizes[0]
     
     # Exponentially decreasing for remaining classes
