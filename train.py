@@ -899,7 +899,7 @@ def main(config):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--dataset', type=str, required=False, default='mnist', choices=['mnist', 'fashion_mnist', 'cifar10'], help='Real Dataset')
-    parser.add_argument('--rho_max', type=float, required=False, default=0.45, help='Probability of dominant class')
+    parser.add_argument('--rho_max', type=float, required=False, default=0.5, help='Probability of dominant class')
     parser.add_argument('--k', type=int, required=False, default=5, help='Number of negative samples')
     parser.add_argument('--M', type=int, required=False, default=3000, help='Number of sub-sampled tuples')
     args = vars(parser.parse_args())
