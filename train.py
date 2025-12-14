@@ -185,27 +185,6 @@ def load_imbalanced_dataset(config, seed=42):
     
     return X_train, labels_train, X_test, labels_test, class_sizes
 
-# -----------------------------------------------------
-# Extract features using ResNet18
-# -----------------------------------------------------
-def extract_features(images, feature_extractor, device, batch_size=128):
-    """
-    Extract features from images using pretrained ResNet18
-    """
-    feature_extractor.eval()
-    features = []
-    
-    dataset = torch.utils.data.TensorDataset(images)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-    
-    with torch.no_grad():
-        for (batch,) in loader:
-            batch = batch.to(device)
-            feats = feature_extractor(batch)
-            features.append(feats.cpu())
-    
-    return torch.cat(features, dim=0)
-
 
 # -----------------------------------------------------
 # Contrastive Tuple Dataset
@@ -373,17 +352,6 @@ def sample_tuple(X, labels, k, class_r, avoid_collision=False):
     neg_indices = random.sample(available, k)
 
     return (anchor_idx, pos_idx, neg_indices)
-
-# -----------------------------------------------------
-# Estimate collision probability
-# -----------------------------------------------------
-def estimate_collision_probability(labels, k):
-    labels_np = labels.cpu().numpy()
-    n = len(labels_np)
-    classes, counts = np.unique(labels_np, return_counts=True)
-    rho = counts / n
-    tau = 1 - np.sum(rho * (1 - rho)**k)
-    return float(tau)
 
 # -----------------------------------------------------
 # Single tuple loss
@@ -947,5 +915,10 @@ def main(config):
 
 
 if __name__ == '__main__':
-    config = ContrastiveConfig(dataset='mnist', k_negatives=5)
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument('--k', type=int, required=False, default=5, help='Number of negative samples')
+    args = vars(parser.parse_args())
+
+    config = ContrastiveConfig(dataset='mnist', k_negatives=args['k'])
     main(config)
