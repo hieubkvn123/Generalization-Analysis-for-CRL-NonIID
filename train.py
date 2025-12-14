@@ -905,7 +905,7 @@ def main(config):
     print("GENERATING COMPARISON PLOTS")
     print("="*60)
     visualize_comparison(results_weighted, results_unweighted, class_sizes, title=config.dataset)
-    with open(f"results/clf_result_{config.dataset}.json", "w") as f:
+    with open(f"results/clf_result_{config.dataset}_k{config.k_negatives}.json", "w") as f:
         json.dump({'weighted': clf_result_weighted, 'unweighted': clf_result_unweighted}, f)
 
     print("\n" + "="*60)
