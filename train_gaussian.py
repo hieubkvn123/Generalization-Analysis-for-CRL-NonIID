@@ -14,14 +14,14 @@ from collections import Counter
 # -----------------------------------------------------
 @dataclass
 class ContrastiveConfig:
-    n_samples: int = 2500
+    n_samples: int = 5000
     n_features: int = 64
-    n_classes: int = 20
+    n_classes: int = 30
     k_negatives: int = 5
     temperature: float = 0.5
     batch_size: int = 128
-    m_incomplete: int = 2000  # sub-sampled tuples 
-    test_size: int = 2000  # test samples
+    m_incomplete: int = 3000  # sub-sampled tuples 
+    test_size: int = 3000  # test samples
 
 # -----------------------------------------------------
 # Create highly imbalanced dataset
@@ -33,6 +33,7 @@ def create_imbalanced_dataset(config, seed=42):
     """
     np.random.seed(seed)
     random.seed(seed)
+    torch.manual_seed(seed)
     
     n = config.n_samples
     n_classes = config.n_classes
@@ -185,7 +186,7 @@ class ContrastiveTupleDataset(Dataset):
             else:
                 weights[(r, False)] = 1 / (1 - self.tau_hat)
                 weights[(r, True)] = (1 / (1 - self.tau_hat)) - threshold * (1/((1-self.tau_hat) * (self.class_counts[r] - 2)))
-                weights[(r, True)] = weights[(r, True)] * 0.5
+                # weights[(r, True)] = weights[(r, True)] * 0.5
         print(weights)
         return weights, minor_classes
 

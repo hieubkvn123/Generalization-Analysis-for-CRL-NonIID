@@ -25,14 +25,14 @@ DATASET_TO_INDIM = { 'mnist': 784, 'fashion_mnist': 784, 'cifar10': 3072 }
 # -----------------------------------------------------
 @dataclass
 class ContrastiveConfig:
-    n_samples: int = 5000  
+    n_samples: int = 9000  
     n_classes: int = 10
     k_negatives: int = 5
     rho_max: float = 0.45
     temperature: float = 0.5
-    batch_size: int = 64  # Reduced for image processing
-    m_incomplete: int = 3000  # sub-sampled tuples 
-    test_size: int = 4000  # test samples
+    batch_size: int = 64 
+    m_incomplete: int = 5000 
+    test_size: int = 4000 
     dataset: str = 'mnist'
 
 # -----------------------------------------------------
@@ -41,7 +41,6 @@ class ContrastiveConfig:
 class SimpleEncoder(nn.Module):
     def __init__(self, input_dim, in_channels=1, hidden_dim=128, output_dim=64):
         super().__init__()
-        # self.features = CIFARFeatureExtractor(in_channels=in_channels) #resnet18(weights=ResNet18_Weights.IMAGENET1K_V1) 
         self.linear1 = nn.Linear(input_dim, hidden_dim, bias=False)
         self.bn1 = nn.BatchNorm1d(hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
