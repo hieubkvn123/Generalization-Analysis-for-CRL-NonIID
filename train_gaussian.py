@@ -39,7 +39,7 @@ def create_imbalanced_dataset(config, seed=42):
     
     # Generate class distribution: first class gets 45%, rest distributed exponentially
     class_sizes = np.zeros(n_classes, dtype=int)
-    class_sizes[0] = int(0.45 * n)  # Dominant class: 45%
+    class_sizes[0] = int(0.5 * n)  # Dominant class: 45%
     
     remaining = n - class_sizes[0]
     
@@ -183,8 +183,9 @@ class ContrastiveTupleDataset(Dataset):
                 weights[(r, False)] = weights[(r, True)]
                 minor_classes.append(r)
             else:
-                weights[(r, True)] = (1 / (1 - self.tau_hat)) - threshold * (1/((1-self.tau_hat) * (self.class_counts[r] - 2)))
                 weights[(r, False)] = 1 / (1 - self.tau_hat)
+                weights[(r, True)] = (1 / (1 - self.tau_hat)) - threshold * (1/((1-self.tau_hat) * (self.class_counts[r] - 2)))
+                weights[(r, True)] = weights[(r, True)] * 0.5
         print(weights)
         return weights, minor_classes
 
@@ -606,7 +607,7 @@ def visualize_rare_class_embeddings(X_test, labels_test, encoder_weighted, encod
                   fontsize=16, fontweight='bold')
 
     plt.tight_layout()
-    plt.savefig('results/rare_class_embeddings.pdf', dpi=150, bbox_inches='tight')
+    plt.savefig('results/gaussian_rare_class_embeddings.pdf', dpi=150, bbox_inches='tight')
     plt.show()
     
     # Print comparison
@@ -656,7 +657,7 @@ def visualize_comparison(results_weighted, results_unweighted, class_sizes):
     ax.legend(fontsize=16)
     ax.grid(True, alpha=0.3, axis='y')
     
-    plt.savefig('results/comparison_results.pdf', dpi=300, bbox_inches='tight')
+    plt.savefig('results/gaussian_comparison_results.pdf', dpi=300, bbox_inches='tight')
     plt.show()
 
 # -----------------------------------------------------
@@ -748,10 +749,6 @@ def main():
     print("\n" + "="*60)
     print("ALL EXPERIMENTS COMPLETED!")
     print("="*60)
-    print("\nGenerated files:")
-    print("  - results/comparison_results_batched.pdf")
-    print("  - results/rare_class_embeddings.pdf")
-    print("\n" + "="*60)
 
 if __name__ == "__main__":
     main()
