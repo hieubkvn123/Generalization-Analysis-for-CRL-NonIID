@@ -16,7 +16,7 @@ from collections import Counter
 class ContrastiveConfig:
     n_samples: int = 5000
     n_features: int = 64
-    n_classes: int = 30
+    n_classes: int = 20
     k_negatives: int = 5
     temperature: float = 0.5
     batch_size: int = 128
@@ -648,9 +648,9 @@ def visualize_comparison(results_weighted, results_unweighted, class_sizes):
     losses_uw = [final_test_uw[c] for c in rarest]
     
     ax.bar(x_pos - width/2, losses_w, width, label='$U_N$', 
-            color='blue', alpha=0.7)
+            color='tab:blue', alpha=0.7)
     ax.bar(x_pos + width/2, losses_uw, width, label='$U_N^\mathrm{hl}$',
-            color='red', alpha=0.7)
+            color='tab:red', alpha=0.7)
     ax.set_xlabel('Rare Class ID', fontsize=16)
     ax.set_ylabel('Final Test Loss', fontsize=16)
     ax.set_xticks(x_pos)
