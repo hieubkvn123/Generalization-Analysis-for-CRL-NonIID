@@ -556,7 +556,7 @@ def visualize_rare_class_embeddings(centers, rarest_classes, class_sizes,
         mask_c = labels_rare == c
         if mask_c.sum() > 0:
             ax1.scatter(Z_weighted_2d[mask_c, 0], Z_weighted_2d[mask_c, 1],
-                       c=[class_colors[c]], label=f'Idx={c}',
+                       c=[class_colors[c]], label=f'Id={c}',
                        alpha=0.7, s=80, edgecolors='black', linewidth=0.5)
             
             # Compute and plot class centroid
