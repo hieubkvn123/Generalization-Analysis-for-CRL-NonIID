@@ -506,7 +506,8 @@ def pca_2d(X):
 
     return Z
 
-def visualize_rare_class_embeddings(centers, rarest_classes, encoder_weighted, encoder_unweighted, config, device, samples_per_class=100):
+def visualize_rare_class_embeddings(centers, rarest_classes, class_sizes, 
+    encoder_weighted, encoder_unweighted, config, device, samples_per_class=100):
     """
     Visualize PCA-reduced embeddings for the 5 rarest classes
     comparing weighted vs unweighted models
@@ -555,7 +556,7 @@ def visualize_rare_class_embeddings(centers, rarest_classes, encoder_weighted, e
         mask_c = labels_rare == c
         if mask_c.sum() > 0:
             ax1.scatter(Z_weighted_2d[mask_c, 0], Z_weighted_2d[mask_c, 1],
-                       c=[class_colors[c]], label=f'Class {c} (n={mask_c.sum()})',
+                       c=[class_colors[c]], label=f'Idx={c}',
                        alpha=0.7, s=80, edgecolors='black', linewidth=0.5)
             
             # Compute and plot class centroid
@@ -565,7 +566,6 @@ def visualize_rare_class_embeddings(centers, rarest_classes, encoder_weighted, e
     
     ax1.set_xlabel('PC1', fontsize=16, fontweight='bold')
     ax1.set_ylabel('PC2', fontsize=16, fontweight='bold')
-    ax1.legend(loc='best', fontsize=16)
     ax1.grid(True, alpha=0.3)
     
     # Compute intra-class compactness for weighted
@@ -585,7 +585,7 @@ def visualize_rare_class_embeddings(centers, rarest_classes, encoder_weighted, e
         mask_c = labels_rare == c
         if mask_c.sum() > 0:
             ax2.scatter(Z_unweighted_2d[mask_c, 0], Z_unweighted_2d[mask_c, 1],
-                       c=[class_colors[c]], label=f'Class {c} (n={mask_c.sum()})',
+                       c=[class_colors[c]], label=f'$n={class_sizes[c]}$',
                        alpha=0.7, s=80, edgecolors='black', linewidth=0.5)
             
             # Compute and plot class centroid
@@ -595,8 +595,26 @@ def visualize_rare_class_embeddings(centers, rarest_classes, encoder_weighted, e
     
     ax2.set_xlabel('PC1', fontsize=16, fontweight='bold')
     ax2.set_ylabel('PC2', fontsize=16, fontweight='bold')
-    ax2.legend(loc='best', fontsize=16)
     ax2.grid(True, alpha=0.3)
+
+    # Show legends
+    handles, labels = ax1.get_legend_handles_labels()
+    fig.legend(
+        handles, labels,
+        loc='center left',
+        title='Class Idx',
+        bbox_to_anchor=(1.0, 0.67),  # slightly outside the right edge
+        fontsize=16,
+    )
+
+    handles, labels = ax2.get_legend_handles_labels()
+    fig.legend(
+        handles, labels,
+        loc='center left',
+        title='Train Size',
+        bbox_to_anchor=(1.0, 0.33),  # slightly outside the right edge
+        fontsize=16,
+    )
     
     # Compute intra-class compactness for unweighted
     intra_dist_uw = []
@@ -751,7 +769,7 @@ def main():
     print("VISUALIZING RARE CLASS EMBEDDINGS (PCA)")
     print("="*60)
     visualize_rare_class_embeddings(
-        centers, rarest_classes,
+        centers, rarest_classes, class_sizes,
         encoder_weighted, encoder_unweighted,
         config, device
     )
