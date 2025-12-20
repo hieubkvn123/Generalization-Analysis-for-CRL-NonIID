@@ -1,13 +1,15 @@
+import time
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+from collections import Counter
+from argparse import ArgumentParser
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from dataclasses import dataclass
-import time
-import random
-import matplotlib.pyplot as plt
-from collections import Counter
 
 # -----------------------------------------------------
 # Configuration
@@ -17,6 +19,7 @@ class ContrastiveConfig:
     n_samples: int = 5000
     n_features: int = 64
     n_classes: int = 20
+    rho_max: float = 0.5
     k_negatives: int = 5
     temperature: float = 0.5
     batch_size: int = 128
@@ -39,9 +42,10 @@ def create_imbalanced_dataset(config, seed=42):
     n = config.n_samples
     n_classes = config.n_classes
     
-    # Generate class distribution: first class gets 45%, rest distributed exponentially
+    # Generate class distribution: first class gets 50%
+    # The rest distributed exponentially
     class_sizes = np.zeros(n_classes, dtype=int)
-    class_sizes[0] = int(0.5 * n)  # Dominant class: 45%
+    class_sizes[0] = int(config.rho_max * n)  # Dominant class
     
     remaining = n - class_sizes[0]
     
@@ -691,13 +695,12 @@ def visualize_comparison(results_weighted, results_unweighted, class_sizes):
 # -----------------------------------------------------
 # Main
 # -----------------------------------------------------
-def main():
+def main(config):
     print("="*60)
     print("WEIGHTED vs UNWEIGHTED INCOMPLETE U-STATISTICS")
     print("With Batched DataLoader Processing")
     print("="*60)
     
-    config = ContrastiveConfig()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\nDevice: {device}")
     print(f"Batch size: {config.batch_size}")
@@ -779,4 +782,18 @@ def main():
     print("="*60)
 
 if __name__ == "__main__":
-    main()
+    parser = ArgumentParser()
+    parser.add_argument('--rho_max', type=float, required=False, default=0.5, help='Probability of dominant class')
+    parser.add_argument('--k', type=int, required=False, default=5, help='Number of negative samples')
+    parser.add_argument('--M', type=int, required=False, default=3000, help='Number of sub-sampled tuples')
+    parser.add_argument('--R', type=int, required=False, default=20, help='Number of classes')
+    args = vars(parser.parse_args())
+
+    # Run main
+    config = ContrastiveConfig(
+        rho_max=args['rho_max'],
+        k_negatives=args['k'],
+        m_incomplete=args['M'],
+        n_classes=args['R']
+    )
+    main(config)
