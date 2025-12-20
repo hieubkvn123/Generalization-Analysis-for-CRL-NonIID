@@ -22,6 +22,7 @@ class ContrastiveConfig:
     batch_size: int = 128
     m_incomplete: int = 3000  # sub-sampled tuples 
     test_size: int = 3000  # test samples
+    n_epochs: int = 300
 
 # -----------------------------------------------------
 # Create highly imbalanced dataset
@@ -63,11 +64,13 @@ def create_imbalanced_dataset(config, seed=42):
     # Generate data for each class
     X_list = []
     labels_list = []
+    centers_list = []
     
     for c in range(n_classes):
         if class_sizes[c] > 0:
             # Generate cluster center
             center = np.random.randn(config.n_features) * 5
+            centers_list.append(center)
             
             # Generate samples around center
             X_c = np.random.randn(class_sizes[c], config.n_features) + center
@@ -85,7 +88,7 @@ def create_imbalanced_dataset(config, seed=42):
     # Normalize
     X = (X - X.mean(axis=0)) / (X.std(axis=0) + 1e-8)
     
-    return X, labels, class_sizes
+    return X, labels, centers_list, class_sizes
 
 # -----------------------------------------------------
 # Simple encoder (PyTorch)
@@ -186,8 +189,6 @@ class ContrastiveTupleDataset(Dataset):
             else:
                 weights[(r, False)] = 1 / (1 - self.tau_hat)
                 weights[(r, True)] = (1 / (1 - self.tau_hat)) - threshold * (1/((1-self.tau_hat) * (self.class_counts[r] - 2)))
-                # weights[(r, True)] = weights[(r, True)] * 0.5
-        print(weights)
         return weights, minor_classes
 
     
@@ -505,17 +506,25 @@ def pca_2d(X):
 
     return Z
 
-def visualize_rare_class_embeddings(X_test, labels_test, encoder_weighted, encoder_unweighted, 
-                                   rarest_classes, config, device):
+def visualize_rare_class_embeddings(centers, rarest_classes, encoder_weighted, encoder_unweighted, config, device, samples_per_class=100):
     """
     Visualize PCA-reduced embeddings for the 5 rarest classes
     comparing weighted vs unweighted models
     """
-    # Filter test data to only include rare classes
-    mask = np.isin(labels_test, rarest_classes)
-    X_rare = X_test[mask]
-    labels_rare = labels_test[mask]
+    # Generate data for each class
+    X_list = []
+    labels_list = []
     
+    for c in rarest_classes:
+        # Get the rare class center
+        center = centers[c]
+        
+        # Generate samples around center
+        X_c = np.random.randn(samples_per_class, config.n_features) + center
+        X_list.append(X_c)
+        labels_list.append(np.full(samples_per_class, c))
+    X_rare = np.vstack(X_list)
+    labels_rare = np.concatenate(labels_list)
     print(f"\nVisualizing {len(X_rare)} samples from 5 rarest classes...")
     
     # Convert to torch
@@ -680,7 +689,7 @@ def main():
     print("\n" + "-"*60)
     print("GENERATING DATASET")
     print("-"*60)
-    X, labels, class_sizes = create_imbalanced_dataset(config)
+    X, labels, centers, class_sizes = create_imbalanced_dataset(config)
     
     # Split into train and test
     n_train = len(X) - config.test_size
@@ -702,7 +711,7 @@ def main():
     start_time = time.time()
     results_unweighted = train_contrastive_model(
         X_train, labels_train, X_test, labels_test,
-        config, n_epochs=300, use_weighting=False, avoid_collision=True
+        config, n_epochs=config.n_epochs, use_weighting=False, avoid_collision=True
     )
     unweighted_time = time.time() - start_time
     encoder_unweighted, _, _, _, _ = results_unweighted
@@ -716,7 +725,7 @@ def main():
     start_time = time.time()
     results_weighted = train_contrastive_model(
         X_train, labels_train, X_test, labels_test,
-        config, n_epochs=300, use_weighting=True
+        config, n_epochs=config.n_epochs, use_weighting=True, avoid_collision=False
     )
     weighted_time = time.time() - start_time
     encoder_weighted, _, _, _, rarest_classes = results_weighted
@@ -742,9 +751,9 @@ def main():
     print("VISUALIZING RARE CLASS EMBEDDINGS (PCA)")
     print("="*60)
     visualize_rare_class_embeddings(
-        X_test, labels_test,
+        centers, rarest_classes,
         encoder_weighted, encoder_unweighted,
-        rarest_classes, config, device
+        config, device
     )
     
     print("\n" + "="*60)
