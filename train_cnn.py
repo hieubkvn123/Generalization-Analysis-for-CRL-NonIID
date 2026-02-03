@@ -882,29 +882,29 @@ def main(config):
     print("EXPERIMENT 1: WEIGHTED U-STATISTICS")
     print("="*60)
     start_time = time.time()
-    #results_weighted = train_contrastive_model(
-    #    X_train_img, labels_train, X_test_img, labels_test,
-    #    config, n_epochs=EPOCHS, use_weighting=True, avoid_collision=False
-    #)
-    #weighted_time = time.time() - start_time
-    #encoder_weighted, _, _, _, rarest_classes = results_weighted
-    #print(f"\nWeighted training completed in {weighted_time:.2f}s")
+    results_weighted = train_contrastive_model(
+        X_train_img, labels_train, X_test_img, labels_test,
+        config, n_epochs=EPOCHS, use_weighting=True, avoid_collision=False
+    )
+    weighted_time = time.time() - start_time
+    encoder_weighted, _, _, _, rarest_classes = results_weighted
+    print(f"\nWeighted training completed in {weighted_time:.2f}s")
 
     # Train classifier weighted
-    #print("\n--- Training classifier on WEIGHTED encoder ---")
-    #classifier_weighted = train_linear_classifier(
-    #    encoder_weighted, X_train_img, labels_train,
-    #    X_test_img, labels_test, config, device, n_epochs=CLF_EPOCHS
-    #)
+    print("\n--- Training classifier on WEIGHTED encoder ---")
+    classifier_weighted = train_linear_classifier(
+        encoder_weighted, X_train_img, labels_train,
+        X_test_img, labels_test, config, device, n_epochs=CLF_EPOCHS
+    )
 
     # Evaluate classifier - weighted 
-    #print("\n" + "="*60)
-    #print("CLASSIFICATION RESULTS - WEIGHTED ENCODER")
-    #print("="*60)
-    #clf_result_weighted = evaluate_classifier_rare_classes(
-    #    classifier_weighted, encoder_weighted, X_test_img, labels_test,
-    #    rarest_classes, config, device
-    #)
+    print("\n" + "="*60)
+    print("CLASSIFICATION RESULTS - WEIGHTED ENCODER")
+    print("="*60)
+    clf_result_weighted = evaluate_classifier_rare_classes(
+        classifier_weighted, encoder_weighted, X_test_img, labels_test,
+        rarest_classes, config, device
+    )
     
     # Train UNWEIGHTED
     print("\n" + "="*60)
