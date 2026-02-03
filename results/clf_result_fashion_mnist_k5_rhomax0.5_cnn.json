@@ -1,1 +1,1 @@
-{"weighted": {"overall_acc": 84.3, "avg_precision": 0.9109769957164824, "avg_recall": 0.8554999999999999, "avg_f1": 0.8770303167333587}, "unweighted": {"overall_acc": 57.62500000000001, "avg_precision": 0.35486362745437366, "avg_recall": 0.396, "avg_f1": 0.31169891827738694}}
+{"weighted": {"overall_acc": 86.02499999999999, "avg_precision": 0.9211524790592149, "avg_recall": 0.842, "avg_f1": 0.8693300077713438}, "unweighted": {"overall_acc": 57.574999999999996, "avg_precision": 0.39971181072323164, "avg_recall": 0.409, "avg_f1": 0.3249765030621142}}
