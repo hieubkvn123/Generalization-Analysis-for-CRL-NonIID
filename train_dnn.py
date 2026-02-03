@@ -17,6 +17,8 @@ from torch.utils.data import Dataset, DataLoader
 # -----------------------------------------------------
 # CONSTANTS 
 # -----------------------------------------------------
+EPOCHS = 300
+CLF_EPOCHS = 100
 DATASET_MAP = { 'mnist': datasets.MNIST, 'fashion_mnist': datasets.FashionMNIST, 'cifar10': datasets.CIFAR10 }
 DATASET_TO_INDIM = { 'mnist': 784, 'fashion_mnist': 784, 'cifar10': 3072 }
 
@@ -831,7 +833,7 @@ def main(config):
     start_time = time.time()
     results_weighted = train_contrastive_model(
         X_train_img, labels_train, X_test_img, labels_test,
-        config, n_epochs=300, use_weighting=True, avoid_collision=False
+        config, n_epochs=EPOCHS, use_weighting=True, avoid_collision=False
     )
     weighted_time = time.time() - start_time
     encoder_weighted, _, _, _, rarest_classes = results_weighted
@@ -841,7 +843,7 @@ def main(config):
     print("\n--- Training classifier on WEIGHTED encoder ---")
     classifier_weighted = train_linear_classifier(
         encoder_weighted, X_train_img, labels_train,
-        X_test_img, labels_test, config, device, n_epochs=100
+        X_test_img, labels_test, config, device, n_epochs=CLF_EPOCHS
     )
 
     # Evaluate classifier - weighted 
@@ -860,7 +862,7 @@ def main(config):
     start_time = time.time()
     results_unweighted = train_contrastive_model(
         X_train_img, labels_train, X_test_img, labels_test,
-        config, n_epochs=300, use_weighting=False, avoid_collision=True
+        config, n_epochs=EPOCHS, use_weighting=False, avoid_collision=True
     )
     unweighted_time = time.time() - start_time
     encoder_unweighted, _, _, _, rarest_classes = results_unweighted
@@ -870,7 +872,7 @@ def main(config):
     print("\n--- Training classifier on UNWEIGHTED encoder ---")
     classifier_unweighted = train_linear_classifier(
         encoder_unweighted, X_train_img, labels_train,
-        X_test_img, labels_test, config, device, n_epochs=100
+        X_test_img, labels_test, config, device, n_epochs=CLF_EPOCHS
     )
 
     # Evaluate classifier - unweighted

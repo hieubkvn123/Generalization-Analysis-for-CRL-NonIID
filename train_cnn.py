@@ -17,8 +17,9 @@ from torch.utils.data import Dataset, DataLoader
 # -----------------------------------------------------
 # CONSTANTS 
 # -----------------------------------------------------
+EPOCHS = 100
+CLF_EPOCHS = 100
 DATASET_MAP = { 'mnist': datasets.MNIST, 'fashion_mnist': datasets.FashionMNIST, 'cifar10': datasets.CIFAR10 }
-DATASET_TO_INDIM = { 'mnist': 784, 'fashion_mnist': 784, 'cifar10': 3072 }
 DATASET_TO_SHAPE = { 'mnist': (1, 28, 28), 'fashion_mnist': (1, 28, 28), 'cifar10': (3, 32, 32) }
 
 # -----------------------------------------------------
@@ -35,7 +36,6 @@ class ContrastiveConfig:
     m_incomplete: int = 5000 
     test_size: int = 4000 
     dataset: str = 'mnist'
-    encoder_type: str = 'mlp'  # 'mlp' or 'cnn'
 
 # -----------------------------------------------------
 # ResNet-style CNN encoder
@@ -139,34 +139,79 @@ class CNNEncoder(nn.Module):
         
         return F.normalize(x, dim=1)
 
-
-# -----------------------------------------------------
-# Simple MLP encoder
-# -----------------------------------------------------
-class SimpleEncoder(nn.Module):
-    def __init__(self, input_dim, in_channels=1, hidden_dim=128, output_dim=64):
+class CNNEncoder(nn.Module):
+    """Simple CNN encoder for contrastive learning on image datasets"""
+    def __init__(self, in_channels=1, hidden_dim=128, output_dim=64):
         super().__init__()
-        self.linear1 = nn.Linear(input_dim, hidden_dim, bias=False)
-        self.bn1 = nn.BatchNorm1d(hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
-        self.bn2 = nn.BatchNorm1d(hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, output_dim)
-        nn.init.normal_(self.linear1.weight, std=0.01)
-        nn.init.normal_(self.linear2.weight, std=0.01)
-        nn.init.normal_(self.linear3.weight, std=0.01)
+
+        # Convolutional layers
+        # For MNIST/Fashion-MNIST (28x28) and CIFAR-10 (32x32)
+        self.conv1 = nn.Conv2d(in_channels, 32, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm2d(128)
+
+        self.pool = nn.MaxPool2d(2, 2)
+        self.dropout = nn.Dropout(0.25)
+
+        # Adaptive pooling to handle different input sizes
+        self.adaptive_pool = nn.AdaptiveAvgPool2d((4, 4))
+
+        # Projection head
+        self.fc1 = nn.Linear(128 * 4 * 4, hidden_dim)
+        self.bn_fc1 = nn.BatchNorm1d(hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, output_dim)
+
+        # Initialize weights
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, std=0.01)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
-        # Extract Features
-        x = x.view(x.size(0), -1)
+        # Conv block 1: 28x28 or 32x32 -> 14x14 or 16x16
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = F.relu(x)
+        x = self.pool(x)
 
-        # Pass through MLP
-        z = F.relu(self.linear1(x))
-        z = self.bn1(z)
-        z = F.relu(self.linear2(z))
-        z = self.bn2(z)
-        z = self.linear3(z)
-        return F.normalize(z, dim=1)
+        # Conv block 2: 14x14 or 16x16 -> 7x7 or 8x8
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = F.relu(x)
+        x = self.pool(x)
 
+        # Conv block 3: 7x7 or 8x8 -> 3x3 or 4x4
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = F.relu(x)
+        x = self.pool(x)
+        x = self.dropout(x)
+
+        # Adaptive pooling to 4x4
+        x = self.adaptive_pool(x)
+        x = torch.flatten(x, 1)
+
+        # Projection head
+        x = self.fc1(x)
+        x = self.bn_fc1(x)
+        x = F.relu(x)
+        x = self.fc2(x)
+
+        return F.normalize(x, dim=1)
 
 class LinearClassifier(nn.Module):
     def __init__(self, input_dim, n_classes):
@@ -487,15 +532,10 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test,
     labels_test = labels_test.to(device)
     
     # Create encoder based on config
-    if config.encoder_type == 'cnn':
-        in_channels = DATASET_TO_SHAPE[config.dataset][0]
-        encoder = CNNEncoder(in_channels=in_channels, hidden_dim=128, output_dim=64).to(device)
-        print(f"\nUsing CNN encoder (ResNet-style) with {in_channels} input channels")
-    else:
-        encoder = SimpleEncoder(DATASET_TO_INDIM[config.dataset], hidden_dim=128, output_dim=64).to(device)
-        print(f"\nUsing MLP encoder with input dim {DATASET_TO_INDIM[config.dataset]}")
-    
+    in_channels = DATASET_TO_SHAPE[config.dataset][0]
+    encoder = CNNEncoder(in_channels=in_channels, hidden_dim=128, output_dim=64).to(device)
     optimizer = torch.optim.Adam(encoder.parameters(), lr=1e-3, amsgrad=True)
+    print(f"\nUsing CNN encoder with {in_channels} input channels")
     
     loss_history = []
     test_loss_history = []
@@ -872,7 +912,7 @@ def visualize_rare_class_embeddings(X_test, labels_test, encoder_weighted, encod
                   fontsize=16, fontweight='bold')
 
     plt.tight_layout()
-    encoder_suffix = f"_{config.encoder_type}" if config.encoder_type != 'mlp' else ""
+    encoder_suffix = "_cnn" 
     plt.savefig(f'results/{title}{encoder_suffix}_rare_class_embeddings.pdf', dpi=150, bbox_inches='tight')
     plt.show()
     
@@ -926,7 +966,6 @@ def visualize_comparison(results_weighted, results_unweighted, class_sizes, titl
 def main(config):
     print("="*60)
     print(f"{config.dataset.upper()} Dataset")
-    print(f"Encoder Type: {config.encoder_type.upper()}")
     print("="*60)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -947,7 +986,7 @@ def main(config):
     start_time = time.time()
     results_weighted = train_contrastive_model(
         X_train_img, labels_train, X_test_img, labels_test,
-        config, n_epochs=300, use_weighting=True, avoid_collision=False
+        config, n_epochs=EPOCHS, use_weighting=True, avoid_collision=False
     )
     weighted_time = time.time() - start_time
     encoder_weighted, _, _, _, rarest_classes = results_weighted
@@ -957,7 +996,7 @@ def main(config):
     print("\n--- Training classifier on WEIGHTED encoder ---")
     classifier_weighted = train_linear_classifier(
         encoder_weighted, X_train_img, labels_train,
-        X_test_img, labels_test, config, device, n_epochs=100
+        X_test_img, labels_test, config, device, n_epochs=CLF_EPOCHS
     )
 
     # Evaluate classifier - weighted 
@@ -976,7 +1015,7 @@ def main(config):
     start_time = time.time()
     results_unweighted = train_contrastive_model(
         X_train_img, labels_train, X_test_img, labels_test,
-        config, n_epochs=300, use_weighting=False, avoid_collision=True
+        config, n_epochs=EPOCHS, use_weighting=False, avoid_collision=True
     )
     unweighted_time = time.time() - start_time
     encoder_unweighted, _, _, _, rarest_classes = results_unweighted
@@ -986,7 +1025,7 @@ def main(config):
     print("\n--- Training classifier on UNWEIGHTED encoder ---")
     classifier_unweighted = train_linear_classifier(
         encoder_unweighted, X_train_img, labels_train,
-        X_test_img, labels_test, config, device, n_epochs=100
+        X_test_img, labels_test, config, device, n_epochs=CLF_EPOCHS
     )
 
     # Evaluate classifier - unweighted
@@ -1002,10 +1041,10 @@ def main(config):
     print("\n" + "="*60)
     print("GENERATING COMPARISON PLOTS")
     print("="*60)
-    encoder_suffix = f"_{config.encoder_type}" if config.encoder_type != 'mlp' else ""
+    encoder_suffix = f"_cnn"
     visualize_comparison(results_weighted, results_unweighted, class_sizes, title=f"{config.dataset}{encoder_suffix}")
     
-    output_filename = f"results/clf_result_{config.dataset}_k{config.k_negatives}_rhomax{config.rho_max}_{config.encoder_type}.json"
+    output_filename = f"results/clf_result_{config.dataset}_k{config.k_negatives}_rhomax{config.rho_max}_cnn.json"
     with open(output_filename, "w") as f:
         json.dump({'weighted': clf_result_weighted, 'unweighted': clf_result_unweighted}, f)
     
@@ -1026,8 +1065,6 @@ if __name__ == '__main__':
                        help='Number of negative samples')
     parser.add_argument('--M', type=int, required=False, default=3000, 
                        help='Number of sub-sampled tuples')
-    parser.add_argument('--encoder', type=str, required=False, default='mlp', 
-                       choices=['mlp', 'cnn'], help='Encoder architecture type')
     args = vars(parser.parse_args())
 
     # Run main
@@ -1035,7 +1072,6 @@ if __name__ == '__main__':
         k_negatives=args['k'], 
         dataset=args['dataset'], 
         m_incomplete=args['M'], 
-        rho_max=args['rho_max'],
-        encoder_type=args['encoder']
+        rho_max=args['rho_max']
     )
     main(config)
