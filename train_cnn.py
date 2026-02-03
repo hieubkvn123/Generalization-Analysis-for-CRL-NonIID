@@ -22,6 +22,16 @@ CLF_EPOCHS = 100
 DATASET_MAP = { 'mnist': datasets.MNIST, 'fashion_mnist': datasets.FashionMNIST, 'cifar10': datasets.CIFAR10 }
 DATASET_TO_SHAPE = { 'mnist': (1, 28, 28), 'fashion_mnist': (1, 28, 28), 'cifar10': (3, 32, 32) }
 
+# Distrust random initialization
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+def set_seed(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
 # -----------------------------------------------------
 # Configuration
 # -----------------------------------------------------
@@ -125,9 +135,7 @@ class LinearClassifier(nn.Module):
 # Load and subsample 
 # -----------------------------------------------------
 def load_imbalanced_dataset(config, seed=42):
-    np.random.seed(seed)
-    random.seed(seed)
-    torch.manual_seed(seed)
+    set_seed(seed)
     
     # Define transforms
     transform = transforms.Compose([ transforms.ToTensor() ])
@@ -429,6 +437,7 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test, config, 
     labels_test = labels_test.to(device)
     
     # Create encoder based on config
+    set_seed(seed=42)
     in_channels = DATASET_TO_SHAPE[config.dataset][0]
     encoder = CNNEncoder(in_channels=in_channels, hidden_dim=128, output_dim=64).to(device)
     optimizer = torch.optim.Adam(encoder.parameters(), lr=1e-3, amsgrad=True)
