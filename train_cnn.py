@@ -17,8 +17,8 @@ from torch.utils.data import Dataset, DataLoader
 # -----------------------------------------------------
 # CONSTANTS 
 # -----------------------------------------------------
-EPOCHS = 300
-CLF_EPOCHS = 200
+EPOCHS = 200
+CLF_EPOCHS = 100
 DATASET_MAP = { 'mnist': datasets.MNIST, 'fashion_mnist': datasets.FashionMNIST, 'cifar10': datasets.CIFAR10 }
 DATASET_TO_SHAPE = { 'mnist': (1, 28, 28), 'fashion_mnist': (1, 28, 28), 'cifar10': (3, 32, 32) }
 
@@ -420,8 +420,7 @@ def evaluate_on_classes(test_dataset, encoder, config, device, target_classes):
 # -----------------------------------------------------
 # Training loop
 # -----------------------------------------------------
-def train_contrastive_model(X_train, labels_train, X_test, labels_test, 
-                           config, n_epochs=100, use_weighting=True, avoid_collision=False):
+def train_contrastive_model(X_train, labels_train, X_test, labels_test, config, n_epochs=100, use_weighting=True, avoid_collision=False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     X_train = X_train.to(device)
@@ -477,7 +476,6 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test,
     best_model, best_loss = None, np.inf
     for epoch in range(n_epochs):
         start = time.time()
-        
         epoch_loss = 0.0
         num_batches = 0
         
@@ -506,27 +504,30 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test,
             epoch_loss += batch_loss.item()
             num_batches += 1
         
+        # Compute train loss
         avg_epoch_loss = epoch_loss / num_batches
         loss_history.append(avg_epoch_loss)
+            
+        # Compute time
         elapsed = time.time() - start
-        
+
+        # Update model based on train loss 
         if avg_epoch_loss < best_loss:
             best_model = encoder.state_dict()
             best_loss = avg_epoch_loss
             print(f' - Update model at epoch {epoch}, new best = {best_loss:.5f}')
         
         if (epoch + 1) % 20 == 0:
+            # Compute rare class loss
             test_losses = evaluate_on_classes(test_dataset, encoder, config, device, rarest_classes)
             avg_test_loss = np.mean([v for v in test_losses.values() if not np.isnan(v)])
             test_loss_history.append(avg_test_loss)
-            
             print(f"Epoch {epoch+1:3d} | Train Loss: {avg_epoch_loss:.4f} | "
                   f"Test Loss (rare): {avg_test_loss:.4f} | Time: {elapsed:.2f}s")
     
     # Load best model
     encoder.load_state_dict(best_model)
     final_test_losses = evaluate_on_classes(test_dataset, encoder, config, device, rarest_classes)
-    
     return encoder, loss_history, test_loss_history, final_test_losses, rarest_classes
 
 def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test, config, device, n_epochs=100):
@@ -624,7 +625,6 @@ def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, r
             all_logits.append(logits.cpu())
         all_logits = torch.cat(all_logits, dim=0)
         predictions = all_logits.argmax(dim=1).cpu().numpy()
-    
     labels_np = labels_test.cpu().numpy()
     
     # Calculate overall metrics
@@ -680,7 +680,6 @@ def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, r
             'support': support[c]
         }
         print(f"{c:<8} {support[c]:<10} {precision[c]:<12.4f} {recall[c]:<12.4f} {f1[c]:<12.4f}")
-    
     print("-"*60)
     
     # Calculate average metrics for rare classes
@@ -701,133 +700,6 @@ def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, r
     print("="*60)
     
     return results
-
-# -----------------------------------------------------
-# PCA Visualization
-# -----------------------------------------------------
-def pca_2d(X):
-    """
-    Perform PCA on an (N, d) data matrix and return its projection to 2 dimensions.
-    """
-    X_centered = X - np.mean(X, axis=0)
-    cov = np.cov(X_centered, rowvar=False)
-
-    # Eigen-decomposition 
-    eigvals, eigvecs = np.linalg.eigh(cov)
-
-    # Get top eigenvectors
-    idx = np.argsort(eigvals)[::-1][:2]
-    top2 = eigvecs[:, idx]   # shape (d, 2)
-
-    # Projection
-    Z = X_centered @ top2
-
-    return Z
-
-def visualize_rare_class_embeddings(X_test, labels_test, encoder_weighted, encoder_unweighted, 
-                                   rarest_classes, config, device, title='mnist'):
-    mask = np.isin(labels_test, rarest_classes)
-    X_rare = X_test[mask].to(device)
-    labels_rare = labels_test[mask].to(device)
-    
-    print(f"\nVisualizing {len(X_rare)} samples from 5 rarest classes...")
-    
-    encoder_weighted.eval()
-    encoder_unweighted.eval()
-    
-    with torch.no_grad():
-        Z_weighted = encoder_weighted(X_rare).cpu().numpy()
-        Z_unweighted = encoder_unweighted(X_rare).cpu().numpy()
-    
-    # Apply PCA to reduce to 2D
-    Z_weighted_2d = pca_2d(Z_weighted)
-    Z_unweighted_2d = pca_2d(Z_unweighted) 
-    
-    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
-    
-    colors = plt.cm.tab10(np.linspace(0, 1, 10))
-    class_colors = {c: colors[i % 10] for i, c in enumerate(rarest_classes)}
-    
-    # Plot weighted
-    ax1 = axes[0]
-    for c in rarest_classes:
-        mask_c = (labels_rare == c).cpu().numpy()
-        if mask_c.sum() > 0:
-            ax1.scatter(Z_weighted_2d[mask_c, 0], Z_weighted_2d[mask_c, 1],
-                       c=[class_colors[c]], label=f'Class {c} (n={mask_c.sum()})',
-                       alpha=0.7, s=80, edgecolors='black', linewidth=0.5)
-            
-            centroid = Z_weighted_2d[mask_c].mean(axis=0)
-            ax1.scatter(centroid[0], centroid[1], c=[class_colors[c]], 
-                       marker='X', s=300, edgecolors='black', linewidth=2)
-    
-    ax1.set_xlabel('PC1', fontsize=16, fontweight='bold')
-    ax1.set_ylabel('PC2', fontsize=16, fontweight='bold')
-    ax1.legend(loc='best', fontsize=12)
-    ax1.grid(True, alpha=0.3)
-    
-    intra_dist_w = []
-    for c in rarest_classes:
-        mask_c = (labels_rare == c).cpu().numpy()
-        if mask_c.sum() > 1:
-            points = Z_weighted_2d[mask_c]
-            centroid = points.mean(axis=0)
-            dists = np.linalg.norm(points - centroid, axis=1)
-            intra_dist_w.append(dists.mean())
-    avg_intra_w = np.mean(intra_dist_w) if intra_dist_w else 0
-    
-    # Plot unweighted
-    ax2 = axes[1]
-    for c in rarest_classes:
-        mask_c = (labels_rare == c).cpu().numpy()
-        if mask_c.sum() > 0:
-            ax2.scatter(Z_unweighted_2d[mask_c, 0], Z_unweighted_2d[mask_c, 1],
-                       c=[class_colors[c]], label=f'Class {c} (n={mask_c.sum()})',
-                       alpha=0.7, s=80, edgecolors='black', linewidth=0.5)
-            
-            centroid = Z_unweighted_2d[mask_c].mean(axis=0)
-            ax2.scatter(centroid[0], centroid[1], c=[class_colors[c]], 
-                       marker='X', s=300, edgecolors='black', linewidth=2)
-    
-    ax2.set_xlabel('PC1', fontsize=16, fontweight='bold')
-    ax2.set_ylabel('PC2', fontsize=16, fontweight='bold')
-    ax2.legend(loc='best', fontsize=12)
-    ax2.grid(True, alpha=0.3)
-    
-    intra_dist_uw = []
-    for c in rarest_classes:
-        mask_c = (labels_rare == c).cpu().numpy()
-        if mask_c.sum() > 1:
-            points = Z_unweighted_2d[mask_c]
-            centroid = points.mean(axis=0)
-            dists = np.linalg.norm(points - centroid, axis=1)
-            intra_dist_uw.append(dists.mean())
-    avg_intra_uw = np.mean(intra_dist_uw) if intra_dist_uw else 0
-    
-    ax1.set_title(f'$U_N$: Rare Class Embeddings (Avg Intra-dist={avg_intra_w:.3f})', 
-                  fontsize=16, fontweight='bold')
-    ax2.set_title(f'$U_N^{{hl}}$: Rare Class Embeddings (Avg Intra-dist={avg_intra_uw:.3f})', 
-                  fontsize=16, fontweight='bold')
-
-    plt.tight_layout()
-    encoder_suffix = "_cnn" 
-    plt.savefig(f'results/{title}{encoder_suffix}_rare_class_embeddings.pdf', dpi=150, bbox_inches='tight')
-    plt.show()
-    
-    print("\n" + "="*60)
-    print("RARE CLASS EMBEDDING QUALITY")
-    print("="*60)
-    print(f"Weighted model - Avg intra-class distance:   {avg_intra_w:.4f}")
-    print(f"Unweighted model - Avg intra-class distance: {avg_intra_uw:.4f}")
-    
-    if avg_intra_w < avg_intra_uw:
-        improvement = ((avg_intra_uw - avg_intra_w) / avg_intra_uw) * 100
-        print(f"\n✓ Weighted model has {improvement:.2f}% more compact clusters!")
-    else:
-        print(f"\n✗ Unweighted model has better compactness")
-    print("="*60)
-    
-    return avg_intra_w, avg_intra_uw
 
 # -----------------------------------------------------
 # Visualization comparison
@@ -887,7 +759,7 @@ def main(config):
         config, n_epochs=EPOCHS, use_weighting=True, avoid_collision=False
     )
     weighted_time = time.time() - start_time
-    encoder_weighted, _, _, _, rarest_classes = results_weighted
+    encoder_weighted, _, _, final_loss_weighted, rarest_classes = results_weighted
     print(f"\nWeighted training completed in {weighted_time:.2f}s")
 
     # Train classifier weighted
@@ -896,11 +768,6 @@ def main(config):
         encoder_weighted, X_train_img, labels_train,
         X_test_img, labels_test, config, device, n_epochs=CLF_EPOCHS
     )
-
-    # Evaluate classifier - weighted 
-    print("\n" + "="*60)
-    print("CLASSIFICATION RESULTS - WEIGHTED ENCODER")
-    print("="*60)
     clf_result_weighted = evaluate_classifier_rare_classes(
         classifier_weighted, encoder_weighted, X_test_img, labels_test,
         rarest_classes, config, device
@@ -916,7 +783,7 @@ def main(config):
         config, n_epochs=EPOCHS, use_weighting=False, avoid_collision=True
     )
     unweighted_time = time.time() - start_time
-    encoder_unweighted, _, _, _, rarest_classes = results_unweighted
+    encoder_unweighted, _, _, final_loss_unweighted, rarest_classes = results_unweighted
     print(f"\nUnweighted training completed in {unweighted_time:.2f}s")
 
     # Train classifier unweighted
@@ -925,11 +792,6 @@ def main(config):
         encoder_unweighted, X_train_img, labels_train,
         X_test_img, labels_test, config, device, n_epochs=CLF_EPOCHS
     )
-
-    # Evaluate classifier - unweighted
-    print("\n" + "="*60)
-    print("CLASSIFICATION RESULTS - UNWEIGHTED ENCODER")
-    print("="*60)
     clf_result_unweighted = evaluate_classifier_rare_classes(
         classifier_unweighted, encoder_unweighted, X_test_img, labels_test,
         rarest_classes, config, device
@@ -944,14 +806,15 @@ def main(config):
     
     output_filename = f"results/clf_result_{config.dataset}_k{config.k_negatives}_rhomax{config.rho_max}_cnn.json"
     with open(output_filename, "w") as f:
-        json.dump({'weighted': clf_result_weighted, 'unweighted': clf_result_unweighted}, f)
+        json.dump({
+            'weighted': clf_result_weighted, 
+            'unweighted': clf_result_unweighted,
+            'final_contrastive_loss_weighted': final_loss_weighted,
+            'final_contrastive_loss_unweighted': final_loss_unweighted
+        }, f)
     
     print(f"\nResults saved to: {output_filename}")
-
     print("\n" + "="*60)
-    print("ALL EXPERIMENTS COMPLETED!")
-    print("="*60)
-
 
 if __name__ == '__main__':
     parser = ArgumentParser()
