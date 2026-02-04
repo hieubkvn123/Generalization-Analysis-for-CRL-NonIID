@@ -62,7 +62,7 @@ class CNNEncoder(nn.Module):
         self.bn3 = nn.BatchNorm2d(128)
 
         self.pool = nn.MaxPool2d(2, 2)
-        self.dropout = nn.Dropout(0.25)
+        self.dropout = nn.Dropout(0.4)
 
         # Adaptive pooling to handle different input sizes
         self.adaptive_pool = nn.AdaptiveAvgPool2d((4, 4))
@@ -156,7 +156,6 @@ def load_imbalanced_dataset(config, seed=42):
     for img, label in train_dataset:
         train_images.append(img)
         train_labels.append(label)
-    
     train_images = torch.stack(train_images)
     train_labels = torch.tensor(train_labels)
     
@@ -165,7 +164,6 @@ def load_imbalanced_dataset(config, seed=42):
     for img, label in test_dataset:
         test_images.append(img)
         test_labels.append(label)
-    
     test_images = torch.stack(test_images)
     test_labels = torch.tensor(test_labels)
     
