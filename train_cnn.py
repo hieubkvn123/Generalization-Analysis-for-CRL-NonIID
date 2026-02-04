@@ -540,9 +540,6 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test, config, 
     return encoder, loss_history, test_loss_history, final_test_losses, rarest_classes
 
 def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test, config, device, n_epochs=100):
-    """
-    Train a linear classifier on top of frozen encoder representations
-    """
     print("\n" + "="*60)
     print("TRAINING LINEAR CLASSIFIER")
     print("="*60)
@@ -568,7 +565,7 @@ def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test,
     
     embedding_dim = train_reps.shape[1]
     classifier = LinearClassifier(embedding_dim, config.n_classes).to(device)
-    optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-3, amsgrad=True)
+    optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-4, amsgrad=True)
     criterion = nn.CrossEntropyLoss()
     
     # Create dataloader
