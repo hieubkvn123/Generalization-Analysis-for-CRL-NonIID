@@ -1,100 +1,114 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-import tqdm
-import numpy as np
-from dataloader.common import get_default_device, apply_model_to_batch
-
-MAX_LOSS = 10.0
-
-# Network definition
-class Net(nn.Module):
-    def __init__(self, in_dim=784, out_dim=64, hidden_dim=128, L=10, device=None):
+# Classifier
+class LinearClassifier(nn.Module):
+    def __init__(self, input_dim, n_classes):
         super().__init__()
-        
-        # Store configs
-        self.in_dim = in_dim
-        self.out_dim = out_dim
-        self.hidden_dim = hidden_dim
-        self.L = L
-
-        # Store device
-        if device is None:
-            self.device = get_default_device()
-        else:
-            self.device = device
-        self.device_type = self.device.type
-
-        # Convert model to own device
-        self.to(self.device)
-        
-        # Create layers
-        self.fc_hidden_layers = []
-        for _ in range(1, self.L):
-            self.fc_hidden_layers.append( nn.Linear(hidden_dim, hidden_dim, bias=False) )
-            # self.fc_hidden_layers.append( nn.BatchNorm1d(hidden_dim) )
-            self.fc_hidden_layers.append( nn.ReLU() )
-            self.fc_hidden_layers.append( nn.Dropout(0.4) )
-        self.v = nn.Sequential(
-            nn.Linear(in_dim, hidden_dim, bias=False),
-            nn.ReLU(), 
-            *self.fc_hidden_layers
-        )
-        self.U = nn.Linear(hidden_dim, out_dim)
-
-    def _tensor_to_numpy(self, x):
-        if self.device_type == 'cuda':
-            return x.cpu().detach().numpy()            
-        else:
-            return x.detach().numpy()
-        
-    def forward(self, x):
-        return self.U(self.v(x))
-
-def get_model(in_dim=784, out_dim=64, hidden_dim=128, L=10, device=None):
-    return Net(in_dim=in_dim, out_dim=out_dim, hidden_dim=hidden_dim, L=L, device=device)
-
-# Define loss functions
-def logistic_loss(y, y_positive, y_negatives):
-    N, d = y.shape
-    h_exp_sum = 0.0
+        self.linear = nn.Linear(input_dim, n_classes)
+        nn.init.normal_(self.linear.weight, std=0.01)
+        nn.init.zeros_(self.linear.bias)
     
-    for y_negative in y_negatives:
-        h_exp_sum += torch.exp(
-            -torch.matmul(
-                y.reshape(N, 1, d), 
-                (y_positive - y_negative).reshape(N, d, 1)
-            ).squeeze(1)
-        )
-    loss = torch.log(1 + h_exp_sum)
-    return loss
+    def forward(self, x):
+        return self.linear(x)
 
+# DNN Definition
+class DNNEncoder(nn.Module):
+    def __init__(self, input_dim, in_channels=1, hidden_dim=128, output_dim=64):
+        super().__init__()
+        self.linear1 = nn.Linear(input_dim, hidden_dim, bias=False)
+        self.bn1 = nn.BatchNorm1d(hidden_dim)
+        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
+        self.bn2 = nn.BatchNorm1d(hidden_dim)
+        self.linear3 = nn.Linear(hidden_dim, output_dim)
+        nn.init.normal_(self.linear1.weight, std=0.01)
+        nn.init.normal_(self.linear2.weight, std=0.01)
+        nn.init.normal_(self.linear3.weight, std=0.01)
 
-def npair_loss(anchors, positives, negatives_list, weights=None):
-    B, d = anchors.shape
-    k = len(negatives_list)
+    def forward(self, x):
+        # Extract Features
+        x = x.view(x.size(0), -1)
 
-    # Compute anchor-positive similarity: (B,)
-    anchor_pos_sim = (anchors * positives).sum(dim=1)
+        # Pass through MLP
+        z = F.relu(self.linear1(x))
+        z = self.bn1(z)
+        z = F.relu(self.linear2(z))
+        z = self.bn2(z)
+        z = self.linear3(z)
+        return F.normalize(z, dim=1)
 
-    # Compute anchor-negative similarities for all negatives
-    # Stack negatives: (k, B, d) -> (B, k, d)
-    negatives = torch.stack(negatives_list, dim=0).transpose(0, 1)  # (B, k, d)
+# CNN Definition
+class CNNEncoder(nn.Module):
+    def __init__(self, in_channels=1, hidden_dim=128, output_dim=64):
+        super().__init__()
 
-    # Compute similarities: (B, k)
-    anchor_neg_sim = torch.bmm(
-        negatives,  # (B, k, d)
-        anchors.unsqueeze(2)  # (B, d, 1)
-    ).squeeze(2)  # (B, k)
+        # Convolutional layers
+        # For MNIST/Fashion-MNIST (28x28) and CIFAR-10 (32x32)
+        self.conv1 = nn.Conv2d(in_channels, 32, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm2d(128)
 
-    # Compute loss: log(1 + sum_i exp(a·n_i - a·p))
-    # For numerical stability, factor out the max
-    differences = anchor_neg_sim - anchor_pos_sim.unsqueeze(1)  # (B, k)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.dropout = nn.Dropout(0.4)
 
-    # Loss = log(1 + sum(exp(differences)))
-    loss = torch.log1p(torch.exp(differences).sum(dim=1))  # (B,)
-    # loss = torch.clamp(loss, max=MAX_LOSS)
-    if weights is not None:
-        loss = weights * loss
+        # Adaptive pooling to handle different input sizes
+        self.adaptive_pool = nn.AdaptiveAvgPool2d((4, 4))
 
-    return loss
+        # Projection head
+        self.fc1 = nn.Linear(128 * 4 * 4, hidden_dim)
+        self.bn_fc1 = nn.BatchNorm1d(hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, output_dim)
+
+        # Initialize weights
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, std=0.01)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
+    def forward(self, x):
+        # Conv block 1: 28x28 or 32x32 -> 14x14 or 16x16
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = F.relu(x)
+        x = self.pool(x)
+
+        # Conv block 2: 14x14 or 16x16 -> 7x7 or 8x8
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = F.relu(x)
+        x = self.pool(x)
+
+        # Conv block 3: 7x7 or 8x8 -> 3x3 or 4x4
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = F.relu(x)
+        x = self.pool(x)
+        x = self.dropout(x)
+
+        # Adaptive pooling to 4x4
+        x = self.adaptive_pool(x)
+        x = torch.flatten(x, 1)
+
+        # Projection head
+        x = self.fc1(x)
+        x = self.bn_fc1(x)
+        x = F.relu(x)
+        x = self.fc2(x)
+
+        return F.normalize(x, dim=-1)
+

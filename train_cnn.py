@@ -1,4 +1,3 @@
-import time
 import json
 import random
 import numpy as np
@@ -13,13 +12,15 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
 
+from models import CNNEncoder, DNNEncoder, LinearClassifier
 
 # -----------------------------------------------------
 # CONSTANTS 
 # -----------------------------------------------------
 EPOCHS = 200
-CLF_EPOCHS = 100
+CLF_EPOCHS = 200
 DATASET_MAP = { 'mnist': datasets.MNIST, 'fashion_mnist': datasets.FashionMNIST, 'cifar10': datasets.CIFAR10 }
+DATASET_TO_INDIM = { 'mnist': 784, 'fashion_mnist': 784, 'cifar10': 3072 }
 DATASET_TO_SHAPE = { 'mnist': (1, 28, 28), 'fashion_mnist': (1, 28, 28), 'cifar10': (3, 32, 32) }
 
 # Distrust random initialization
@@ -37,99 +38,16 @@ def set_seed(seed: int):
 # -----------------------------------------------------
 @dataclass
 class ContrastiveConfig:
-    n_samples: int = 9000  
+    n_samples: int = 10000  
     n_classes: int = 10
     k_negatives: int = 5
     rho_max: float = 0.45
     temperature: float = 0.5
     batch_size: int = 64 
     m_incomplete: int = 5000 
-    test_size: int = 4000 
+    test_size: int = 10000 
     dataset: str = 'mnist'
-
-class CNNEncoder(nn.Module):
-    """Simple CNN encoder for contrastive learning on image datasets"""
-    def __init__(self, in_channels=1, hidden_dim=128, output_dim=64):
-        super().__init__()
-
-        # Convolutional layers
-        # For MNIST/Fashion-MNIST (28x28) and CIFAR-10 (32x32)
-        self.conv1 = nn.Conv2d(in_channels, 32, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(32)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm2d(64)
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        self.bn3 = nn.BatchNorm2d(128)
-
-        self.pool = nn.MaxPool2d(2, 2)
-        self.dropout = nn.Dropout(0.4)
-
-        # Adaptive pooling to handle different input sizes
-        self.adaptive_pool = nn.AdaptiveAvgPool2d((4, 4))
-
-        # Projection head
-        self.fc1 = nn.Linear(128 * 4 * 4, hidden_dim)
-        self.bn_fc1 = nn.BatchNorm1d(hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, output_dim)
-
-        # Initialize weights
-        self._initialize_weights()
-
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, std=0.01)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-
-    def forward(self, x):
-        # Conv block 1: 28x28 or 32x32 -> 14x14 or 16x16
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = F.relu(x)
-        x = self.pool(x)
-
-        # Conv block 2: 14x14 or 16x16 -> 7x7 or 8x8
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = F.relu(x)
-        x = self.pool(x)
-
-        # Conv block 3: 7x7 or 8x8 -> 3x3 or 4x4
-        x = self.conv3(x)
-        x = self.bn3(x)
-        x = F.relu(x)
-        x = self.pool(x)
-        x = self.dropout(x)
-
-        # Adaptive pooling to 4x4
-        x = self.adaptive_pool(x)
-        x = torch.flatten(x, 1)
-
-        # Projection head
-        x = self.fc1(x)
-        x = self.bn_fc1(x)
-        x = F.relu(x)
-        x = self.fc2(x)
-
-        return F.normalize(x, dim=1)
-
-class LinearClassifier(nn.Module):
-    def __init__(self, input_dim, n_classes):
-        super().__init__()
-        self.linear = nn.Linear(input_dim, n_classes)
-        nn.init.normal_(self.linear.weight, std=0.01)
-        nn.init.zeros_(self.linear.bias)
-    
-    def forward(self, x):
-        return self.linear(x)
+    model: str = 'cnn'
 
 # -----------------------------------------------------
 # Load and subsample 
@@ -224,7 +142,6 @@ def load_imbalanced_dataset(config, seed=42):
                                     size=test_samples_per_class, replace=False)
         else:
             chosen = class_indices.numpy()
-        
         test_indices.extend(chosen)
     
     test_indices = np.array(test_indices)
@@ -315,11 +232,9 @@ class ContrastiveTupleDataset(Dataset):
                 weights[(r, True)] *= 0.5
         return weights, minor_classes
 
-    
     def compute_weight(self, tuple_indices):
         if not self.use_weighting:
             return 1.0
-        
         anchor_idx, pos_idx, neg_indices = tuple_indices
         anchor_label = self.labels[anchor_idx].item()
         has_collision = any(self.labels[n].item() == anchor_label for n in neg_indices)
@@ -330,22 +245,7 @@ class ContrastiveTupleDataset(Dataset):
             list(self.class_probs.keys()),
             p=list(self.class_probs.values())
         ) 
-        
-        max_attempts = 10
-        for _ in range(max_attempts):
-            tuple_indices = self.sample_tuple(class_r)
-            if tuple_indices is not None:
-                break
-        else:
-            anchor_idx = 0
-            pos_idx = 1 if len(self.X) > 1 else 0
-            neg_indices = list(range(2, min(2 + self.k, len(self.X))))
-            tuple_indices = (anchor_idx, pos_idx, neg_indices)
-            return (self.X[anchor_idx], 
-                   self.X[pos_idx], 
-                   self.X[neg_indices],
-                   torch.tensor(0.0))
-        
+        tuple_indices = self.sample_tuple(class_r)
         anchor_idx, pos_idx, neg_indices = tuple_indices
         weight = self.compute_weight(tuple_indices)
         
@@ -362,7 +262,6 @@ def collate_tuples(batch):
     positives = torch.stack([item[1] for item in batch])
     negatives = torch.stack([item[2] for item in batch])
     weights = torch.stack([item[3] for item in batch])
-    
     return anchors, positives, negatives, weights
 
 # -----------------------------------------------------
@@ -370,12 +269,10 @@ def collate_tuples(batch):
 # -----------------------------------------------------
 def batched_contrastive_loss(anchors, positives, negatives, temperature):
     batch_size = anchors.shape[0]
-    
     pos_sim = (anchors * positives).sum(dim=1) / temperature
     neg_sims = torch.bmm(negatives, anchors.unsqueeze(2)).squeeze(2) / temperature
     v = pos_sim.unsqueeze(1) - neg_sims
     losses = torch.log1p(torch.exp(-v).sum(dim=1))
-    
     return losses
 
 # -----------------------------------------------------
@@ -427,17 +324,17 @@ def evaluate_on_classes(test_dataset, encoder, config, device, target_classes):
 # Training loop
 # -----------------------------------------------------
 def train_contrastive_model(X_train, labels_train, X_test, labels_test, config, n_epochs=100, use_weighting=True, avoid_collision=False):
+    set_seed(seed=42)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    X_train = X_train.to(device)
-    labels_train = labels_train.to(device)
-    X_test = X_test.to(device)
-    labels_test = labels_test.to(device)
+    X_train, labels_train = X_train.to(device), labels_train.to(device)
+    X_test, labels_test = X_test.to(device), labels_test.to(device)
     
     # Create encoder based on config
-    set_seed(seed=42)
     in_channels = DATASET_TO_SHAPE[config.dataset][0]
+    in_dims = DATASET_TO_INDIM[config.dataset]
     encoder = CNNEncoder(in_channels=in_channels, hidden_dim=128, output_dim=64).to(device)
+    if config.model == 'dnn':
+        encoder = DNNEncoder(in_dims, hidden_dim=128, output_dim=64).to(device)
     optimizer = torch.optim.Adam(encoder.parameters(), lr=1e-3, amsgrad=True)
     print(f"\nUsing CNN encoder with {in_channels} input channels")
     
@@ -451,7 +348,9 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test, config, 
     method_name = "WEIGHTED" if use_weighting else "UNWEIGHTED"
     print(f"\n{'='*60}")
     print(f"Training with {method_name} incomplete U-statistics")
+    print(f"N={len(X_train)} labeled samples")
     print(f"M={config.m_incomplete} tuples per epoch")
+    print(f"k={config.k_negatives} negatives per tuple")
     print(f"Batch size={config.batch_size}")
     print(f"Rarest classes: {rarest_classes} with counts {class_counts[rarest_classes]}")
     print(f"{'='*60}")
@@ -482,7 +381,6 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test, config, 
     
     best_model, best_loss = None, np.inf
     for epoch in range(n_epochs):
-        start = time.time()
         epoch_loss = 0.0
         num_batches = 0
         
@@ -515,9 +413,6 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test, config, 
         avg_epoch_loss = epoch_loss / num_batches
         loss_history.append(avg_epoch_loss)
             
-        # Compute time
-        elapsed = time.time() - start
-
         # Update model based on train loss 
         if avg_epoch_loss < best_loss:
             best_model = encoder.state_dict()
@@ -529,8 +424,7 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test, config, 
             test_losses = evaluate_on_classes(test_dataset, encoder, config, device, rarest_classes)
             avg_test_loss = np.mean([v for v in test_losses.values() if not np.isnan(v)])
             test_loss_history.append(avg_test_loss)
-            print(f"Epoch {epoch+1:3d} | Train Loss: {avg_epoch_loss:.4f} | "
-                  f"Test Loss (rare): {avg_test_loss:.4f} | Time: {elapsed:.2f}s")
+            print(f"Epoch {epoch+1:3d} | Train Loss: {avg_epoch_loss:.4f} | Test Loss (rare): {avg_test_loss:.4f}")
     
     # Load best model
     encoder.load_state_dict(best_model)
@@ -598,8 +492,7 @@ def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test,
         train_acc = 100. * correct / total
         
         if (epoch + 1) % 20 == 0 or epoch == 0:
-            print(f"Epoch {epoch+1:3d} | Loss: {epoch_loss/len(train_loader):.4f} | "
-                  f"Train Acc: {train_acc:.2f}%")
+            print(f"Epoch {epoch+1:3d} | Loss: {epoch_loss/len(train_loader):.4f} | Train Acc: {train_acc:.2f}%")
     
     return classifier
 
@@ -638,16 +531,9 @@ def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, r
     f1, recall, precision, accuracy, support = {}, {}, {}, {}, {}
     
     for c in range(config.n_classes):
-        # True positives: predicted as c AND actually c
         tp = np.sum((predictions == c) & (labels_np == c))
-        
-        # False positives: predicted as c BUT actually not c
         fp = np.sum((predictions == c) & (labels_np != c))
-        
-        # False negatives: predicted as not c BUT actually c
         fn = np.sum((predictions != c) & (labels_np == c))
-        
-        # Support: total number of samples in class c
         support[c] = np.sum(labels_np == c)
         
         # Precision: TP / (TP + FP)
@@ -706,46 +592,17 @@ def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, r
     return results
 
 # -----------------------------------------------------
-# Visualization comparison
-# -----------------------------------------------------
-def visualize_comparison(results_weighted, results_unweighted, class_sizes, title='mnist'):
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    _, loss_w, test_loss_w, final_test_w, rarest = results_weighted
-    _, loss_uw, test_loss_uw, final_test_uw, _ = results_unweighted
-    
-    x_pos = np.arange(len(rarest))
-    width = 0.35
-    
-    losses_w = [final_test_w[c] for c in rarest]
-    losses_uw = [final_test_uw[c] for c in rarest]
-    
-    ax.bar(x_pos - width/2, losses_w, width, label='$U_N$', 
-            color='blue', alpha=0.7)
-    ax.bar(x_pos + width/2, losses_uw, width, label='$U_N^\\mathrm{hl}$',
-            color='red', alpha=0.7)
-    ax.set_xlabel('Rare Class ID', fontsize=16)
-    ax.set_ylabel('Final Test Loss', fontsize=16)
-    ax.set_xticks(x_pos)
-    ax.set_xticklabels([f'C{c}' for c in rarest])
-    ax.legend(fontsize=16)
-    ax.grid(True, alpha=0.3, axis='y')
-    
-    plt.savefig(f'results/{title}_comparison_results.pdf', dpi=300, bbox_inches='tight')
-    plt.show()
-
-# -----------------------------------------------------
 # Main
 # -----------------------------------------------------
 def main(config):
+    # Get device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Report device + dataset
     print("="*60)
     print(f"{config.dataset.upper()} Dataset")
+    print(f"Device: {device}")
     print("="*60)
-    
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"\nDevice: {device}")
-    print(f"Number of negative samples: {config.k_negatives}")
-    print(f"Number of sub-sampled tuples: {config.m_incomplete}")
     
     # Load dataset 
     print("\n" + "-"*60)
@@ -757,14 +614,11 @@ def main(config):
     print("\n" + "="*60)
     print("EXPERIMENT 1: WEIGHTED U-STATISTICS")
     print("="*60)
-    start_time = time.time()
     results_weighted = train_contrastive_model(
         X_train_img, labels_train, X_test_img, labels_test,
         config, n_epochs=EPOCHS, use_weighting=True, avoid_collision=False
     )
-    weighted_time = time.time() - start_time
     encoder_weighted, _, _, final_loss_weighted, rarest_classes = results_weighted
-    print(f"\nWeighted training completed in {weighted_time:.2f}s")
 
     # Train classifier weighted
     print("\n--- Training classifier on WEIGHTED encoder ---")
@@ -781,14 +635,11 @@ def main(config):
     print("\n" + "="*60)
     print("EXPERIMENT 2: UNWEIGHTED U-STATISTICS")
     print("="*60)
-    start_time = time.time()
     results_unweighted = train_contrastive_model(
         X_train_img, labels_train, X_test_img, labels_test,
         config, n_epochs=EPOCHS, use_weighting=False, avoid_collision=True
     )
-    unweighted_time = time.time() - start_time
     encoder_unweighted, _, _, final_loss_unweighted, rarest_classes = results_unweighted
-    print(f"\nUnweighted training completed in {unweighted_time:.2f}s")
 
     # Train classifier unweighted
     print("\n--- Training classifier on UNWEIGHTED encoder ---")
@@ -801,13 +652,7 @@ def main(config):
         rarest_classes, config, device
     )
 
-    # Visualize comparison
-    print("\n" + "="*60)
-    print("GENERATING COMPARISON PLOTS")
-    print("="*60)
-    encoder_suffix = f"_cnn"
-    visualize_comparison(results_weighted, results_unweighted, class_sizes, title=f"{config.dataset}{encoder_suffix}")
-    
+    # Record output 
     output_filename = f"results/clf_result_{config.dataset}_k{config.k_negatives}_rhomax{config.rho_max}_cnn.json"
     with open(output_filename, "w") as f:
         json.dump({
@@ -816,26 +661,24 @@ def main(config):
             'final_contrastive_loss_weighted': final_loss_weighted,
             'final_contrastive_loss_unweighted': final_loss_unweighted
         }, f)
-    
     print(f"\nResults saved to: {output_filename}")
-    print("\n" + "="*60)
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--dataset', type=str, required=False, default='cifar10', 
-                       choices=['mnist', 'fashion_mnist', 'cifar10'], help='Real Dataset')
-    parser.add_argument('--rho_max', type=float, required=False, default=0.5, 
-                       help='Probability of dominant class')
-    parser.add_argument('--k', type=int, required=False, default=5, 
-                       help='Number of negative samples')
-    parser.add_argument('--M', type=int, required=False, default=3000, 
-                       help='Number of sub-sampled tuples')
+    parser.add_argument('--dataset', type=str, required=False, default='cifar10', choices=['mnist', 'fashion_mnist', 'cifar10'], help='Real Dataset')
+    parser.add_argument('--model', type=str, required=False, default='cnn', choices=['cnn', 'dnn'], help='Model architecture type')
+    parser.add_argument('--rho_max', type=float, required=False, default=0.5, help='Probability of dominant class')
+    parser.add_argument('--k', type=int, required=False, default=5, help='Number of negative samples')
+    parser.add_argument('--M', type=int, required=False, default=20000, help='Number of sub-sampled tuples')
+    parser.add_argument('--N', type=int, required=False, default=10000, help='Number of labeled instances')
     args = vars(parser.parse_args())
 
     # Run main
     config = ContrastiveConfig(
+        model=args['model'],
         k_negatives=args['k'], 
         dataset=args['dataset'], 
+        n_samples=args['N'],
         m_incomplete=args['M'], 
         rho_max=args['rho_max']
     )

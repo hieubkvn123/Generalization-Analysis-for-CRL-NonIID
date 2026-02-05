@@ -1,0 +1,28 @@
+================================================================================
+Evaluation Results - CIFAR10 CNN Procedure B
+================================================================================
+
+Configuration:
+  Dataset: CIFAR10
+  Model: CNN
+  Procedure: b
+  M (tuples): 5000
+  k (negatives): 5
+  Contrastive epochs: 50
+  Classifier epochs: 100
+
+Final Contrastive Loss: 0.6331
+
+Overall Test Accuracy: 34.30%
+
+Rare Classes ([5, 6, 7, 8, 9]):
+  Micro-averaged Precision: 91.92%
+  Micro-averaged Recall:    9.10%
+  Micro-averaged F1-score:  16.56%
+
+Per-class metrics for rare classes:
+  Class 5: Precision=90.91%, Recall=5.00%, F1=9.48%
+  Class 6: Precision=94.87%, Recall=18.50%, F1=30.96%
+  Class 7: Precision=89.74%, Recall=17.50%, F1=29.29%
+  Class 8: Precision=100.00%, Recall=1.00%, F1=1.98%
+  Class 9: Precision=87.50%, Recall=3.50%, F1=6.73%
