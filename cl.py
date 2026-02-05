@@ -771,7 +771,7 @@ def main():
     parser.add_argument('--procedure', type=str, default='a',
                        choices=['a', 'b'],
                        help='Sampling procedure (a or b)')
-    parser.add_argument('--M', type=int, default=5000,
+    parser.add_argument('--M', type=int, default=20000,
                        help='Number of tuples to sample')
     parser.add_argument('--k', type=int, default=10,
                        help='Number of negative samples')
