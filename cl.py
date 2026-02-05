@@ -3,19 +3,17 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
-from torch.utils.data import Dataset, DataLoader, Subset
-
-import os
-import argparse
 import numpy as np
+from torch.utils.data import Dataset, DataLoader, Subset
+import argparse
 from tqdm import tqdm
-from sklearn.metrics import precision_score, recall_score, f1_score, classification_report
+import os
+
 
 # ==================== Network Architectures ====================
-
 class DNN(nn.Module):
     """Deep Neural Network for flattened inputs"""
-    def __init__(self, input_dim, hidden_dims=[512, 256, 128], output_dim=64):
+    def __init__(self, input_dim, hidden_dims=[512, 256, 128], output_dim=64, l2_normalize=False):
         super(DNN, self).__init__()
         layers = []
         prev_dim = input_dim
@@ -29,18 +27,21 @@ class DNN(nn.Module):
         
         layers.append(nn.Linear(prev_dim, output_dim))
         self.network = nn.Sequential(*layers)
+        self.l2_normalize = l2_normalize
         
     def forward(self, x):
         x = x.view(x.size(0), -1)  # Flatten
         x = self.network(x)
+
         # L2 normalize for contrastive learning
-        x = nn.functional.normalize(x, p=2, dim=1)
+        if self.l2_normalize:
+            x = nn.functional.normalize(x, p=2, dim=1)
         return x
 
 
 class CNN(nn.Module):
     """Convolutional Neural Network"""
-    def __init__(self, in_channels, output_dim=64):
+    def __init__(self, in_channels, output_dim=64, l2_normalize=False):
         super(CNN, self).__init__()
         
         self.conv_layers = nn.Sequential(
@@ -66,6 +67,7 @@ class CNN(nn.Module):
         # Will be set dynamically based on input size
         self.fc_layers = None
         self.output_dim = output_dim
+        self.l2_normalize = l2_normalize
         
     def forward(self, x):
         x = self.conv_layers(x)
@@ -83,8 +85,10 @@ class CNN(nn.Module):
         
         x = x.view(x.size(0), -1)
         x = self.fc_layers(x)
+
         # L2 normalize
-        # x = nn.functional.normalize(x, p=2, dim=1)
+        if self.l2_normalize:
+            x = nn.functional.normalize(x, p=2, dim=1)
         return x
 
 
@@ -113,17 +117,20 @@ def create_imbalanced_dataset(dataset_name, N=10000, class_ratios=None):
     
     # Load dataset
     if dataset_name == 'MNIST':
-        full_dataset = torchvision.datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+        full_dataset = torchvision.datasets.MNIST(root='./data', train=True, 
+                                                   download=True, transform=transform)
         num_classes = 10
     elif dataset_name == 'CIFAR10':
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-        full_dataset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+        full_dataset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                                      download=True, transform=transform)
         num_classes = 10
     elif dataset_name == 'FashionMNIST':
-        full_dataset = torchvision.datasets.FashionMNIST(root='./data', train=True, download=True, transform=transform)
+        full_dataset = torchvision.datasets.FashionMNIST(root='./data', train=True,
+                                                          download=True, transform=transform)
         num_classes = 10
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
@@ -184,17 +191,20 @@ def create_balanced_test_dataset(dataset_name, samples_per_class=200):
     
     # Load test dataset
     if dataset_name == 'MNIST':
-        full_test_dataset = torchvision.datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+        full_test_dataset = torchvision.datasets.MNIST(root='./data', train=False, 
+                                                        download=True, transform=transform)
         num_classes = 10
     elif dataset_name == 'CIFAR10':
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-        full_test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+        full_test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False,
+                                                           download=True, transform=transform)
         num_classes = 10
     elif dataset_name == 'FashionMNIST':
-        full_test_dataset = torchvision.datasets.FashionMNIST(root='./data', train=False, download=True, transform=transform)
+        full_test_dataset = torchvision.datasets.FashionMNIST(root='./data', train=False,
+                                                               download=True, transform=transform)
         num_classes = 10
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
@@ -312,18 +322,18 @@ def precompute_tuples_procedure_b(dataset, labels, k, M, device):
         # Select r with probability rho_r
         r = np.random.choice(unique_classes, p=[class_probs[c] for c in unique_classes])
         N_r = class_counts[r]
-
-        # Sample anchor-positive
-        if len(class_indices[r]) < 2:
-            continue
-        anchor_idx, positive_idx = np.random.choice(class_indices[r], size=2, replace=False)
         
         # Determine if we should avoid collision
         threshold = (3 * tau_hat * (N - 2)) / k + 2
         avoid_collision = (N_r <= threshold)
-
-        # Sample negatives accordingly
+        
         if avoid_collision:
+            # Sample from Theta_r (no collision with anchor class)
+            if len(class_indices[r]) < 2:
+                continue
+            
+            anchor_idx, positive_idx = np.random.choice(class_indices[r], size=2, replace=False)
+            
             # Negatives from S \ S_r
             negative_pool = np.concatenate([class_indices[c] for c in unique_classes if c != r])
             
@@ -336,6 +346,12 @@ def precompute_tuples_procedure_b(dataset, labels, k, M, device):
             weight = (1 / (1 - tau_hat)) * np.prod([(N - ell - N_r) / (N - ell - 2) 
                                                      for ell in range(k)])
         else:
+            # Sample from Omega_r (allow collision)
+            if len(class_indices[r]) < 2:
+                continue
+            
+            anchor_idx, positive_idx = np.random.choice(class_indices[r], size=2, replace=False)
+            
             # Negatives from S \ {X, X^+}
             available_pool = np.array([idx for idx in range(N) 
                                        if idx != anchor_idx and idx != positive_idx])
@@ -478,6 +494,7 @@ def compute_loss_procedure_b(model, tuples, dataset, device, batch_size=256):
 
 
 # ==================== Linear Classifier Evaluation ====================
+
 class LinearClassifier(nn.Module):
     """Linear classifier on top of frozen representations"""
     def __init__(self, input_dim, num_classes):
@@ -576,6 +593,7 @@ def evaluate_classifier(classifier, features, labels, device,
     Returns:
         Dictionary with overall and rare class metrics
     """
+    from sklearn.metrics import precision_score, recall_score, f1_score, classification_report
     
     classifier.eval()
     
@@ -753,7 +771,7 @@ def main():
     parser.add_argument('--procedure', type=str, default='a',
                        choices=['a', 'b'],
                        help='Sampling procedure (a or b)')
-    parser.add_argument('--M', type=int, default=20000,
+    parser.add_argument('--M', type=int, default=5000,
                        help='Number of tuples to sample')
     parser.add_argument('--k', type=int, default=10,
                        help='Number of negative samples')
