@@ -18,7 +18,7 @@ from data import load_imbalanced_dataset, collate_tuples, ContrastiveTupleDatase
 # -----------------------------------------------------
 # CONSTANTS 
 # -----------------------------------------------------
-EPOCHS = 200
+EPOCHS = 300
 CLF_EPOCHS = 200
 DATASET_TO_INDIM = { 'mnist': 784, 'fashion_mnist': 784, 'cifar10': 3072 }
 DATASET_TO_SHAPE = { 'mnist': (1, 28, 28), 'fashion_mnist': (1, 28, 28), 'cifar10': (3, 32, 32) }
