@@ -19,7 +19,7 @@ from data import load_imbalanced_dataset, collate_tuples, ContrastiveTupleDatase
 # CONSTANTS 
 # -----------------------------------------------------
 EPOCHS = 200
-CLF_EPOCHS = 200
+CLF_EPOCHS = 1000
 DATASET_TO_INDIM = { 'mnist': 784, 'fashion_mnist': 784, 'cifar10': 3072 }
 DATASET_TO_SHAPE = { 'mnist': (1, 28, 28), 'fashion_mnist': (1, 28, 28), 'cifar10': (3, 32, 32) }
 DATASET_MAP = { 'mnist': datasets.MNIST, 'fashion_mnist': datasets.FashionMNIST, 'cifar10': datasets.CIFAR10 }
@@ -118,9 +118,9 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test, config, 
     # Create encoder based on config
     in_channels = DATASET_TO_SHAPE[config.dataset][0]
     in_dims = DATASET_TO_INDIM[config.dataset]
-    encoder = CNNEncoder(in_channels=in_channels, hidden_dim=128, output_dim=64).to(device)
+    encoder = CNNEncoder(in_channels=in_channels, hidden_dim=256, output_dim=128).to(device)
     if config.model == 'dnn':
-        encoder = DNNEncoder(in_dims, hidden_dim=128, output_dim=64).to(device)
+        encoder = DNNEncoder(in_dims, hidden_dim=256, output_dim=128).to(device)
     optimizer = torch.optim.Adam(encoder.parameters(), lr=1e-3, weight_decay=0.001, amsgrad=True)
     print(f"\nUsing CNN encoder with {in_channels} input channels")
     
@@ -395,7 +395,6 @@ def main(config):
     print(f"LOADING {config.dataset.upper()} DATASET")
     print("-"*60)
     X_train_img, labels_train, X_test_img, labels_test, class_sizes = load_imbalanced_dataset(config)
-    print(X_train_img.shape)
 
     # Train WEIGHTED
     print("\n" + "="*60)
