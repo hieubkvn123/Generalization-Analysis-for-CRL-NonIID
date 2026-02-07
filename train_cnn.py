@@ -18,7 +18,7 @@ from data import load_imbalanced_dataset, collate_tuples, ContrastiveTupleDatase
 # -----------------------------------------------------
 # CONSTANTS 
 # -----------------------------------------------------
-EPOCHS = 300
+EPOCHS = 200
 CLF_EPOCHS = 200
 DATASET_TO_INDIM = { 'mnist': 784, 'fashion_mnist': 784, 'cifar10': 3072 }
 DATASET_TO_SHAPE = { 'mnist': (1, 28, 28), 'fashion_mnist': (1, 28, 28), 'cifar10': (3, 32, 32) }
@@ -121,7 +121,7 @@ def train_contrastive_model(X_train, labels_train, X_test, labels_test, config, 
     encoder = CNNEncoder(in_channels=in_channels, hidden_dim=128, output_dim=64).to(device)
     if config.model == 'dnn':
         encoder = DNNEncoder(in_dims, hidden_dim=128, output_dim=64).to(device)
-    optimizer = torch.optim.Adam(encoder.parameters(), lr=1e-3, amsgrad=True)
+    optimizer = torch.optim.Adam(encoder.parameters(), lr=1e-3, weight_decay=0.001, amsgrad=True)
     print(f"\nUsing CNN encoder with {in_channels} input channels")
     
     loss_history = []
@@ -395,6 +395,7 @@ def main(config):
     print(f"LOADING {config.dataset.upper()} DATASET")
     print("-"*60)
     X_train_img, labels_train, X_test_img, labels_test, class_sizes = load_imbalanced_dataset(config)
+    print(X_train_img.shape)
 
     # Train WEIGHTED
     print("\n" + "="*60)
@@ -439,7 +440,7 @@ def main(config):
     )
 
     # Record output 
-    output_filename = f"results/clf_result_{config.dataset}_k{config.k_negatives}_rhomax{config.rho_max}_{config.model}.json"
+    output_filename = "test.json" # f"results/clf_result_{config.dataset}_k{config.k_negatives}_rhomax{config.rho_max}_{config.model}.json"
     with open(output_filename, "w") as f:
         json.dump({
             'weighted': clf_result_weighted, 
@@ -456,7 +457,7 @@ if __name__ == '__main__':
     parser.add_argument('--rho_max', type=float, required=False, default=0.5, help='Probability of dominant class')
     parser.add_argument('--k', type=int, required=False, default=5, help='Number of negative samples')
     parser.add_argument('--M', type=int, required=False, default=20000, help='Number of sub-sampled tuples')
-    parser.add_argument('--N', type=int, required=False, default=10000, help='Number of labeled instances')
+    parser.add_argument('--N', type=int, required=False, default=20000, help='Number of labeled instances')
     args = vars(parser.parse_args())
 
     # Run main
