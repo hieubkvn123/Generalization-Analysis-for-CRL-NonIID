@@ -440,7 +440,7 @@ def main(config):
     )
 
     # Record output 
-    output_filename = "test.json" # f"results/clf_result_{config.dataset}_k{config.k_negatives}_rhomax{config.rho_max}_{config.model}.json"
+    output_filename = f"results/clf_result_{config.dataset}_k{config.k_negatives}_rhomax{config.rho_max}_{config.model}.json"
     with open(output_filename, "w") as f:
         json.dump({
             'weighted': clf_result_weighted, 
