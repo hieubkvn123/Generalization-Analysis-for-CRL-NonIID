@@ -482,7 +482,7 @@ def main(config):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--dataset', type=str, required=False, default='cifar10', choices=['mnist', 'fashion_mnist', 'cifar10', 'cifar100'], help='Real dataset')
-    parser.add_argument('--patience', type=int, required=False, default=20, help='Early stopping patience')
+    parser.add_argument('--patience', type=int, required=False, default=30, help='Early stopping patience')
     parser.add_argument('--model', type=str, required=False, default='cnn', choices=['cnn', 'dnn'], help='Model architecture type')
     parser.add_argument('--clf_model', type=str, required=False, default='clf', choices=['knn', 'clf'], help='Classification model type')
     parser.add_argument('--rho_max', type=float, required=False, default=0.5, help='Probability of dominant class')
