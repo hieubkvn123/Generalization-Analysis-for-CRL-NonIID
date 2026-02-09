@@ -1,6 +1,7 @@
 import random
 import numpy as np
 from collections import Counter
+from sklearn.model_selection import train_test_split
 
 import torch
 from torchvision import datasets, transforms
@@ -100,7 +101,7 @@ def load_imbalanced_dataset(config, seed=42):
     labels_train = train_labels[selected_indices]
     
     # For test set, sample proportionally
-    test_indices = []
+    test_indices, val_indices = [], []
     test_samples_per_class = config.test_size // n_classes
     for c in range(n_classes):
         class_mask = test_labels == c
@@ -113,11 +114,13 @@ def load_imbalanced_dataset(config, seed=42):
             chosen = class_indices.numpy()
         test_indices.extend(chosen)
     
-    test_indices = np.array(test_indices)
-    X_test = test_images[test_indices]
-    labels_test = test_labels[test_indices]
+    # Split 50 - 50 for val-test
+    test_indices, val_indices = train_test_split(test_indices, test_size=0.5)
+    test_indices, val_indices = np.array(test_indices), np.array(val_indices)
+    X_test, X_val = test_images[test_indices], test_images[val_indices]
+    labels_test, labels_val = test_labels[test_indices], test_labels[val_indices]
     
-    return X_train, labels_train, X_test, labels_test, class_sizes
+    return X_train, labels_train, X_test, labels_test, X_val, labels_val, class_sizes
 
 
 # -----------------------------------------------------

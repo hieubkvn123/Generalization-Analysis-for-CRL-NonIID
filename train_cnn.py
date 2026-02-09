@@ -6,6 +6,9 @@ from collections import Counter
 from dataclasses import dataclass
 from argparse import ArgumentParser
 
+from sklearn.metrics import accuracy_score
+from sklearn.neighbors import KNeighborsClassifier
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -106,182 +109,6 @@ def evaluate_on_classes(test_dataset, encoder, config, device, target_classes):
     encoder.train()
     return avg_losses
 
-# -----------------------------------------------------
-# Training loop
-# -----------------------------------------------------
-def train_contrastive_model(X_train, labels_train, X_test, labels_test, config, n_epochs=100, use_weighting=True, avoid_collision=False):
-    set_seed(seed=42)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    X_train, labels_train = X_train.to(device), labels_train.to(device)
-    X_test, labels_test = X_test.to(device), labels_test.to(device)
-    
-    # Create encoder based on config
-    in_channels = DATASET_TO_SHAPE[config.dataset][0]
-    in_dims = DATASET_TO_INDIM[config.dataset]
-    encoder = CNNEncoder(in_channels=in_channels, hidden_dim=256, output_dim=128).to(device)
-    if config.model == 'dnn':
-        encoder = DNNEncoder(in_dims, hidden_dim=256, output_dim=128).to(device)
-    optimizer = torch.optim.Adam(encoder.parameters(), lr=1e-3, weight_decay=0.001, amsgrad=True)
-    print(f"\nUsing CNN encoder with {in_channels} input channels")
-    
-    loss_history = []
-    test_loss_history = []
-    
-    # Identify 5 rarest classes
-    class_counts = np.bincount(labels_train.cpu().numpy())
-    rarest_classes = np.argsort(class_counts)[:5].tolist()
-    
-    method_name = "WEIGHTED" if use_weighting else "UNWEIGHTED"
-    print(f"\n{'='*60}")
-    print(f"Training with {method_name} incomplete U-statistics")
-    print(f"N={len(X_train)} labeled samples")
-    print(f"M={config.m_incomplete} tuples per epoch")
-    print(f"k={config.k_negatives} negatives per tuple")
-    print(f"Batch size={config.batch_size}")
-    print(f"Rarest classes: {rarest_classes} with counts {class_counts[rarest_classes]}")
-    print(f"{'='*60}")
-
-    dataset = ContrastiveTupleDataset(
-        X_train, labels_train, 
-        config.k_negatives, 
-        config.m_incomplete,
-        use_weighting=use_weighting,
-        avoid_collision=avoid_collision
-    )
-
-    test_dataset = ContrastiveTupleDataset(
-        X_test, labels_test, 
-        config.k_negatives, 
-        config.m_incomplete,
-        use_weighting=False,
-        avoid_collision=True
-    )
-    
-    dataloader = DataLoader(
-        dataset, 
-        batch_size=config.batch_size,
-        shuffle=False,
-        collate_fn=collate_tuples,
-        num_workers=0
-    )
-    
-    best_model, best_loss = None, np.inf
-    for epoch in range(n_epochs):
-        epoch_loss = 0.0
-        num_batches = 0
-        
-        for anchors, positives, negatives, weights in dataloader:
-            optimizer.zero_grad()
-            
-            weights = weights.to(device)
-            z_anchors = encoder(anchors)
-            z_positives = encoder(positives)
-            
-            batch_size, k, C, H, W = negatives.shape
-            z_negatives = encoder(negatives.view(batch_size * k, C, H, W))
-            z_negatives = z_negatives.view(batch_size, k, -1)
-            
-            losses = batched_contrastive_loss(
-                z_anchors, z_positives, z_negatives, 
-                config.temperature
-            )
-            
-            weighted_losses = losses * weights
-            batch_loss = weighted_losses.sum() / weights.sum()
-            
-            batch_loss.backward()
-            optimizer.step()
-            
-            epoch_loss += batch_loss.item()
-            num_batches += 1
-        
-        # Compute train loss
-        avg_epoch_loss = epoch_loss / num_batches
-        loss_history.append(avg_epoch_loss)
-            
-        # Update model based on train loss 
-        if avg_epoch_loss < best_loss:
-            best_model = encoder.state_dict()
-            best_loss = avg_epoch_loss
-            print(f' - Update model at epoch {epoch}, new best = {best_loss:.5f}')
-        
-        if (epoch + 1) % 20 == 0:
-            # Compute rare class loss
-            test_losses = evaluate_on_classes(test_dataset, encoder, config, device, rarest_classes)
-            avg_test_loss = np.mean([v for v in test_losses.values() if not np.isnan(v)])
-            test_loss_history.append(avg_test_loss)
-            print(f"Epoch {epoch+1:3d} | Train Loss: {avg_epoch_loss:.4f} | Test Loss (rare): {avg_test_loss:.4f}")
-    
-    # Load best model
-    encoder.load_state_dict(best_model)
-    final_test_losses = evaluate_on_classes(test_dataset, encoder, config, device, rarest_classes)
-    return encoder, loss_history, test_loss_history, final_test_losses, rarest_classes
-
-def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test, config, device, n_epochs=100):
-    print("\n" + "="*60)
-    print("TRAINING LINEAR CLASSIFIER")
-    print("="*60)
-    
-    encoder.eval()
-    
-    # Extract representations
-    with torch.no_grad():
-        batch_size = 256
-        train_reps = []
-        for i in range(0, len(X_train), batch_size):
-            batch = X_train[i:i+batch_size].to(device)
-            reps = encoder(batch)
-            train_reps.append(reps.cpu())
-        train_reps = torch.cat(train_reps, dim=0).to(device)
-        
-        test_reps = []
-        for i in range(0, len(X_test), batch_size):
-            batch = X_test[i:i+batch_size].to(device)
-            reps = encoder(batch)
-            test_reps.append(reps.cpu())
-        test_reps = torch.cat(test_reps, dim=0).to(device)
-    
-    embedding_dim = train_reps.shape[1]
-    classifier = LinearClassifier(embedding_dim, config.n_classes).to(device)
-    optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-4, amsgrad=True)
-    criterion = nn.CrossEntropyLoss()
-    
-    # Create dataloader
-    train_dataset = torch.utils.data.TensorDataset(train_reps, labels_train)
-    train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
-    
-    print(f"Training for {n_epochs} epochs...")
-    print(f"Train representations: {train_reps.shape}")
-    print(f"Test representations: {test_reps.shape}")
-    
-    for epoch in range(n_epochs):
-        classifier.train()
-        epoch_loss = 0.0
-        correct = 0
-        total = 0
-        
-        for batch_reps, batch_labels in train_loader:
-            optimizer.zero_grad()
-            batch_labels = batch_labels.to(device)
-            
-            logits = classifier(batch_reps)
-            loss = criterion(logits, batch_labels)
-            
-            loss.backward()
-            optimizer.step()
-            
-            epoch_loss += loss.item()
-            _, predicted = logits.max(1)
-            total += batch_labels.size(0)
-            correct += predicted.eq(batch_labels).sum().item()
-        
-        train_acc = 100. * correct / total
-        
-        if (epoch + 1) % 20 == 0 or epoch == 0:
-            print(f"Epoch {epoch+1:3d} | Loss: {epoch_loss/len(train_loader):.4f} | Train Acc: {train_acc:.2f}%")
-    
-    return classifier
-
 def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, rarest_classes, config, device):
     print("\n" + "="*60)
     print("EVALUATING CLASSIFIER ON RARE CLASSES")
@@ -378,6 +205,201 @@ def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, r
     return results
 
 # -----------------------------------------------------
+# Training loop
+# -----------------------------------------------------
+def train_contrastive_model(X_train, labels_train, X_val, labels_val, X_test, labels_test, config, n_epochs=100, 
+        patience=20, use_weighting=True, avoid_collision=False):
+    set_seed(seed=42)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    X_train, labels_train = X_train.to(device), labels_train.to(device)
+    X_test, labels_test = X_test.to(device), labels_test.to(device)
+    X_val = X_val.to(device)
+    
+    # Create encoder based on config
+    in_channels = DATASET_TO_SHAPE[config.dataset][0]
+    in_dims = DATASET_TO_INDIM[config.dataset]
+    encoder = CNNEncoder(in_channels=in_channels, hidden_dim=256, output_dim=128).to(device)
+    if config.model == 'dnn':
+        encoder = DNNEncoder(in_dims, hidden_dim=256, output_dim=128).to(device)
+    optimizer = torch.optim.Adam(encoder.parameters(), lr=1e-3, amsgrad=True)
+    print(f"\nUsing CNN encoder with {in_channels} input channels")
+    
+    loss_history = []
+    test_loss_history = []
+    
+    # Identify 5 rarest classes
+    class_counts = np.bincount(labels_train.cpu().numpy())
+    rarest_classes = np.argsort(class_counts)[:5].tolist()
+    
+    method_name = "WEIGHTED" if use_weighting else "UNWEIGHTED"
+    print(f"\n{'='*60}")
+    print(f"Training with {method_name} incomplete U-statistics")
+    print(f"N={len(X_train)} labeled samples")
+    print(f"M={config.m_incomplete} tuples per epoch")
+    print(f"k={config.k_negatives} negatives per tuple")
+    print(f"Batch size={config.batch_size}")
+    print(f"Rarest classes: {rarest_classes} with counts {class_counts[rarest_classes]}")
+    print(f"{'='*60}")
+
+    dataset = ContrastiveTupleDataset(
+        X_train, labels_train, 
+        config.k_negatives, 
+        config.m_incomplete,
+        use_weighting=use_weighting,
+        avoid_collision=avoid_collision
+    )
+
+    test_dataset = ContrastiveTupleDataset(
+        X_test, labels_test, 
+        config.k_negatives, 
+        config.m_incomplete,
+        use_weighting=False,
+        avoid_collision=True
+    )
+    
+    dataloader = DataLoader(
+        dataset, 
+        batch_size=config.batch_size,
+        shuffle=False,
+        collate_fn=collate_tuples,
+        num_workers=0
+    )
+    
+    best_model, best_acc, epoch_no_improve = encoder, 0.0, 0
+    for epoch in range(n_epochs):
+        epoch_loss = 0.0
+        num_batches = 0
+        
+        encoder.train()
+        for anchors, positives, negatives, weights in dataloader:
+            optimizer.zero_grad()
+            
+            weights = weights.to(device)
+            z_anchors = encoder(anchors)
+            z_positives = encoder(positives)
+            
+            batch_size, k, C, H, W = negatives.shape
+            z_negatives = encoder(negatives.view(batch_size * k, C, H, W))
+            z_negatives = z_negatives.view(batch_size, k, -1)
+            
+            losses = batched_contrastive_loss(
+                z_anchors, z_positives, z_negatives, 
+                config.temperature
+            )
+            
+            weighted_losses = losses * weights
+            batch_loss = weighted_losses.sum() / weights.sum()
+            
+            batch_loss.backward()
+            optimizer.step()
+            
+            epoch_loss += batch_loss.item()
+            num_batches += 1
+        
+        # Compute train loss
+        avg_epoch_loss = epoch_loss / num_batches
+        loss_history.append(avg_epoch_loss)
+
+        # Compute validation performance
+        encoder.eval()
+        with torch.no_grad():
+            reps_val  = encoder(X_val).cpu()
+            knn_model = KNeighborsClassifier(n_neighbors=config.k_negatives).fit(reps_val, labels_val)
+            pred_val  = knn_model.predict(reps_val)
+            acc_knn   = accuracy_score(labels_val, pred_val)
+            
+        # Update model based on train loss 
+        if acc_knn >= best_acc:
+            epoch_no_improve = 0
+            best_model, best_acc = encoder.state_dict(), acc_knn
+            print(f' - Update model at epoch {epoch}, new best (KNN) accuracy = {acc_knn:.5f}, avg train loss = {avg_epoch_loss:.5f}')
+        else:
+            epoch_no_improve += 1
+
+        # Early stop
+        if epoch_no_improve >= patience:
+            print(f'Early stopping triggered at epoch {epoch}')
+            break
+        
+        if (epoch + 1) % 20 == 0:
+            # Compute rare class loss
+            test_losses = evaluate_on_classes(test_dataset, encoder, config, device, rarest_classes)
+            avg_test_loss = np.mean([v for v in test_losses.values() if not np.isnan(v)])
+            test_loss_history.append(avg_test_loss)
+            print(f"Epoch {epoch+1:3d} | Train Loss: {avg_epoch_loss:.4f} | Test Loss (rare): {avg_test_loss:.4f}")
+    
+    # Load best model
+    encoder.load_state_dict(best_model)
+    final_test_losses = evaluate_on_classes(test_dataset, encoder, config, device, rarest_classes)
+    return encoder, loss_history, test_loss_history, final_test_losses, rarest_classes
+
+def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test, config, device, n_epochs=100):
+    print("\n" + "="*60)
+    print("TRAINING LINEAR CLASSIFIER")
+    print("="*60)
+    
+    encoder.eval()
+    
+    # Extract representations
+    with torch.no_grad():
+        batch_size = 256
+        train_reps = []
+        for i in range(0, len(X_train), batch_size):
+            batch = X_train[i:i+batch_size].to(device)
+            reps = encoder(batch)
+            train_reps.append(reps.cpu())
+        train_reps = torch.cat(train_reps, dim=0).to(device)
+        
+        test_reps = []
+        for i in range(0, len(X_test), batch_size):
+            batch = X_test[i:i+batch_size].to(device)
+            reps = encoder(batch)
+            test_reps.append(reps.cpu())
+        test_reps = torch.cat(test_reps, dim=0).to(device)
+    
+    embedding_dim = train_reps.shape[1]
+    classifier = LinearClassifier(embedding_dim, config.n_classes).to(device)
+    optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-4, amsgrad=True)
+    criterion = nn.CrossEntropyLoss()
+    
+    # Create dataloader
+    train_dataset = torch.utils.data.TensorDataset(train_reps, labels_train)
+    train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
+    
+    print(f"Training for {n_epochs} epochs...")
+    print(f"Train representations: {train_reps.shape}")
+    print(f"Test representations: {test_reps.shape}")
+    
+    for epoch in range(n_epochs):
+        classifier.train()
+        epoch_loss = 0.0
+        correct = 0
+        total = 0
+        
+        for batch_reps, batch_labels in train_loader:
+            optimizer.zero_grad()
+            batch_labels = batch_labels.to(device)
+            
+            logits = classifier(batch_reps)
+            loss = criterion(logits, batch_labels)
+            
+            loss.backward()
+            optimizer.step()
+            
+            epoch_loss += loss.item()
+            _, predicted = logits.max(1)
+            total += batch_labels.size(0)
+            correct += predicted.eq(batch_labels).sum().item()
+        
+        train_acc = 100. * correct / total
+        
+        if (epoch + 1) % 20 == 0 or epoch == 0:
+            print(f"Epoch {epoch+1:3d} | Loss: {epoch_loss/len(train_loader):.4f} | Train Acc: {train_acc:.2f}%")
+    
+    return classifier
+
+
+# -----------------------------------------------------
 # Main
 # -----------------------------------------------------
 def main(config):
@@ -394,14 +416,14 @@ def main(config):
     print("\n" + "-"*60)
     print(f"LOADING {config.dataset.upper()} DATASET")
     print("-"*60)
-    X_train_img, labels_train, X_test_img, labels_test, class_sizes = load_imbalanced_dataset(config)
+    X_train_img, labels_train, X_test_img, labels_test, X_val_img, labels_val, class_sizes = load_imbalanced_dataset(config)
 
     # Train WEIGHTED
     print("\n" + "="*60)
     print("EXPERIMENT 1: WEIGHTED U-STATISTICS")
     print("="*60)
     results_weighted = train_contrastive_model(
-        X_train_img, labels_train, X_test_img, labels_test,
+        X_train_img, labels_train, X_val_img, labels_val, X_test_img, labels_test,
         config, n_epochs=EPOCHS, use_weighting=True, avoid_collision=False
     )
     encoder_weighted, _, _, final_loss_weighted, rarest_classes = results_weighted
@@ -422,7 +444,7 @@ def main(config):
     print("EXPERIMENT 2: UNWEIGHTED U-STATISTICS")
     print("="*60)
     results_unweighted = train_contrastive_model(
-        X_train_img, labels_train, X_test_img, labels_test,
+        X_train_img, labels_train, X_val_img, labels_val, X_test_img, labels_test,
         config, n_epochs=EPOCHS, use_weighting=False, avoid_collision=True
     )
     encoder_unweighted, _, _, final_loss_unweighted, rarest_classes = results_unweighted
