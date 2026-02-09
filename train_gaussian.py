@@ -609,12 +609,6 @@ def visualize_rare_class_embeddings(centers, rarest_classes, class_sizes,
     print("="*60)
     print(f"Weighted model - Avg intra-class distance:   {avg_intra_w:.4f}")
     print(f"Unweighted model - Avg intra-class distance: {avg_intra_uw:.4f}")
-    
-    if avg_intra_w < avg_intra_uw:
-        improvement = ((avg_intra_uw - avg_intra_w) / avg_intra_uw) * 100
-        print(f"\n✓ Weighted model has {improvement:.2f}% more compact clusters!")
-    else:
-        print(f"\n✗ Unweighted model has better compactness")
     print("="*60)
     
     return avg_intra_w, avg_intra_uw
