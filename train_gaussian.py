@@ -239,10 +239,6 @@ class ContrastiveTupleDataset(Dataset):
 # Collate function for batching
 # -----------------------------------------------------
 def collate_tuples(batch):
-    """
-    Custom collate function to handle tuples
-    batch: list of (anchor, positive, negatives, weight)
-    """
     anchors = torch.stack([item[0] for item in batch])
     positives = torch.stack([item[1] for item in batch])
     negatives = torch.stack([item[2] for item in batch])  # (batch, k, d)
@@ -254,13 +250,6 @@ def collate_tuples(batch):
 # Batched contrastive loss
 # -----------------------------------------------------
 def batched_contrastive_loss(anchors, positives, negatives, temperature):
-    """
-    Compute contrastive loss for a batch
-    anchors: (batch, d)
-    positives: (batch, d)
-    negatives: (batch, k, d)
-    Returns: (batch,) loss per sample
-    """
     batch_size = anchors.shape[0]
     
     # Compute positive similarities: (batch,)
@@ -276,15 +265,6 @@ def batched_contrastive_loss(anchors, positives, negatives, temperature):
     losses = torch.log1p(torch.exp(-v).sum(dim=1))
     
     return losses
-
-# -----------------------------------------------------
-# Collision check
-# -----------------------------------------------------
-def check_collision(tuple_indices, labels):
-    anchor_idx, pos_idx, neg_indices = tuple_indices
-    anchor_label = labels[anchor_idx]
-    num_collisions = sum(int(labels[n] == anchor_label) for n in neg_indices)
-    return num_collisions > 0, num_collisions
 
 # -----------------------------------------------------
 # Tuple sampler (kept for evaluation)
