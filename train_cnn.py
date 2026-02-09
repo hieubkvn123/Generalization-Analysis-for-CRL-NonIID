@@ -50,6 +50,7 @@ class ContrastiveConfig:
     batch_size: int = 64 
     m_incomplete: int = 5000 
     test_size: int = 10000 
+    patience: int = 20
     dataset: str = 'mnist'
     model: str = 'cnn'
 
@@ -208,7 +209,7 @@ def evaluate_classifier_rare_classes(classifier, encoder, X_test, labels_test, r
 # Training loop
 # -----------------------------------------------------
 def train_contrastive_model(X_train, labels_train, X_val, labels_val, X_test, labels_test, config, n_epochs=100, 
-        patience=20, use_weighting=True, avoid_collision=False):
+        use_weighting=True, avoid_collision=False):
     set_seed(seed=42)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     X_train, labels_train = X_train.to(device), labels_train.to(device)
@@ -317,7 +318,7 @@ def train_contrastive_model(X_train, labels_train, X_val, labels_val, X_test, la
             epoch_no_improve += 1
 
         # Early stop
-        if epoch_no_improve >= patience:
+        if epoch_no_improve >= config.patience:
             print(f'Early stopping triggered at epoch {epoch}')
             break
         
@@ -476,9 +477,10 @@ def main(config):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--dataset', type=str, required=False, default='cifar10', choices=['mnist', 'fashion_mnist', 'cifar10'], help='Real Dataset')
+    parser.add_argument('--dataset', type=str, required=False, default='cifar10', choices=['mnist', 'fashion_mnist', 'cifar10'], help='Real dataset')
+    parser.add_argument('--patience', type=int, required=False, default=20, help='Early stopping patience')
     parser.add_argument('--model', type=str, required=False, default='cnn', choices=['cnn', 'dnn'], help='Model architecture type')
-    parser.add_argument('--clf_model', type=str, required=False, default='clf', choices=['knn', 'clf'], help='Model architecture type')
+    parser.add_argument('--clf_model', type=str, required=False, default='clf', choices=['knn', 'clf'], help='Classification model type')
     parser.add_argument('--rho_max', type=float, required=False, default=0.5, help='Probability of dominant class')
     parser.add_argument('--k', type=int, required=False, default=5, help='Number of negative samples')
     parser.add_argument('--M', type=int, required=False, default=20000, help='Number of sub-sampled tuples')
@@ -492,6 +494,7 @@ if __name__ == '__main__':
         dataset=args['dataset'], 
         n_samples=args['N'],
         m_incomplete=args['M'], 
-        rho_max=args['rho_max']
+        rho_max=args['rho_max'],
+        patience=args['patience']
     )
     main(config)
