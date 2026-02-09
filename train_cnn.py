@@ -333,6 +333,9 @@ def train_contrastive_model(X_train, labels_train, X_val, labels_val, X_test, la
     final_test_losses = evaluate_on_classes(test_dataset, encoder, config, device, rarest_classes)
     return encoder, loss_history, test_loss_history, final_test_losses, rarest_classes
 
+## FOOTNOTE: A KNN classifier trained on the val dataset then tested on the val dataset gives us the information to the question
+## "Do data points of a class A generally closer to classes other than A or not"
+
 def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test, config, device, n_epochs=100):
     print("\n" + "="*60)
     print("TRAINING LINEAR CLASSIFIER")
@@ -475,6 +478,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--dataset', type=str, required=False, default='cifar10', choices=['mnist', 'fashion_mnist', 'cifar10'], help='Real Dataset')
     parser.add_argument('--model', type=str, required=False, default='cnn', choices=['cnn', 'dnn'], help='Model architecture type')
+    parser.add_argument('--clf_model', type=str, required=False, default='clf', choices=['knn', 'clf'], help='Model architecture type')
     parser.add_argument('--rho_max', type=float, required=False, default=0.5, help='Probability of dominant class')
     parser.add_argument('--k', type=int, required=False, default=5, help='Number of negative samples')
     parser.add_argument('--M', type=int, required=False, default=20000, help='Number of sub-sampled tuples')
