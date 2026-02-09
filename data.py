@@ -7,7 +7,7 @@ import torch
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset
 
-DATASET_MAP = { 'mnist': datasets.MNIST, 'fashion_mnist': datasets.FashionMNIST, 'cifar10': datasets.CIFAR10 }
+DATASET_MAP = { 'mnist': datasets.MNIST, 'fashion_mnist': datasets.FashionMNIST, 'cifar10': datasets.CIFAR10, 'cifar100': datasets.CIFAR100 }
 
 # Distrust random initialization
 torch.backends.cudnn.deterministic = True
@@ -39,16 +39,14 @@ def load_imbalanced_dataset(config, seed=42):
     test_dataset  = dataclass(root='./data', train=False, download=True, transform=transform)
     
     # Convert to numpy for processing
-    train_images = []
-    train_labels = []
+    train_images, train_labels = [], []
     for img, label in train_dataset:
         train_images.append(img)
         train_labels.append(label)
     train_images = torch.stack(train_images)
     train_labels = torch.tensor(train_labels)
     
-    test_images = []
-    test_labels = []
+    test_images, test_labels = [], []
     for img, label in test_dataset:
         test_images.append(img)
         test_labels.append(label)
