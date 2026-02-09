@@ -120,6 +120,107 @@ def load_imbalanced_dataset(config, seed=42):
     
     return X_train, labels_train, X_test, labels_test, X_val, labels_val, class_sizes
 
+def load_balanced_dataset(config, seed=42):
+    set_seed(seed)
+
+    # Define transforms
+    transform = transforms.Compose([ transforms.ToTensor() ])
+    if config.dataset == 'cifar10':
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5071, 0.4867, 0.4408], std=[0.2675, 0.2565, 0.2761])
+        ])
+
+    # Load full dataset
+    dataclass = DATASET_MAP[config.dataset]
+    train_dataset = dataclass(root='./data', train=True,  download=True, transform=transform)
+    test_dataset  = dataclass(root='./data', train=False, download=True, transform=transform)
+
+    # Convert to numpy for processing
+    train_images, train_labels = [], []
+    for img, label in train_dataset:
+        train_images.append(img)
+        train_labels.append(label)
+    train_images = torch.stack(train_images)
+    train_labels = torch.tensor(train_labels)
+
+    test_images, test_labels = [], []
+    for img, label in test_dataset:
+        test_images.append(img)
+        test_labels.append(label)
+    test_images = torch.stack(test_images)
+    test_labels = torch.tensor(test_labels)
+
+    # Calculate empirical class distribution from original dataset
+    n = config.n_samples
+    n_classes = config.n_classes
+
+    # Count samples per class in original training set
+    label_counts = Counter(train_labels.numpy())
+    total_samples = len(train_labels)
+
+    # Calculate empirical probabilities
+    empirical_probs = np.array([label_counts[c] / total_samples for c in range(n_classes)])
+
+    # Distribute n_samples according to empirical probabilities
+    class_sizes = np.zeros(n_classes, dtype=int)
+    for i in range(n_classes):
+        class_sizes[i] = int(empirical_probs[i] * n)
+
+    # Adjust to exactly match n_samples (handle rounding)
+    diff = n - class_sizes.sum()
+    if diff > 0:
+        # Add remaining samples to largest classes
+        largest_classes = np.argsort(empirical_probs)[::-1]
+        for i in range(diff):
+            class_sizes[largest_classes[i % n_classes]] += 1
+    elif diff < 0:
+        # Remove excess samples from largest classes
+        largest_classes = np.argsort(empirical_probs)[::-1]
+        for i in range(abs(diff)):
+            class_sizes[largest_classes[i % n_classes]] -= 1
+
+    # Sample from each class
+    selected_indices = []
+    for c in range(n_classes):
+        class_mask = train_labels == c
+        class_indices = torch.where(class_mask)[0]
+
+        if len(class_indices) >= class_sizes[c]:
+            chosen = np.random.choice(class_indices.numpy(),
+                                    size=class_sizes[c], replace=False)
+        else:
+            chosen = class_indices.numpy()
+
+        selected_indices.extend(chosen)
+
+    selected_indices = np.array(selected_indices)
+    np.random.shuffle(selected_indices)
+
+    X_train = train_images[selected_indices]
+    labels_train = train_labels[selected_indices]
+
+    # For test set, sample proportionally
+    test_indices = []
+    test_samples_per_class = config.test_size // n_classes
+    for c in range(n_classes):
+        class_mask = test_labels == c
+        class_indices = torch.where(class_mask)[0]
+
+        if len(class_indices) >= test_samples_per_class:
+            chosen = np.random.choice(class_indices.numpy(),
+                                    size=test_samples_per_class, replace=False)
+        else:
+            chosen = class_indices.numpy()
+        test_indices.extend(chosen)
+
+    # Split 50 - 50 for val-test
+    test_indices, val_indices = train_test_split(test_indices, test_size=0.5)
+    test_indices, val_indices = np.array(test_indices), np.array(val_indices)
+    X_test, X_val = test_images[test_indices], test_images[val_indices]
+    labels_test, labels_val = test_labels[test_indices], test_labels[val_indices]
+
+    return X_train, labels_train, X_test, labels_test, X_val, labels_val, class_sizes
 
 # -----------------------------------------------------
 # Collate function
@@ -164,8 +265,6 @@ class ContrastiveTupleDataset(Dataset):
 
         # Precompute all weights
         self.weights, self.minor_classes = self.precompute_weights()
-        for r in self.classes:
-            print(f'Weight for class {r}: {self.weights[(r, True)]}, {self.weights[(r, False)]}')
     
     def __len__(self):
         return self.num_tuples

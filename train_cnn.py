@@ -16,15 +16,16 @@ from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
 
 from models import CNNEncoder, DNNEncoder, LinearClassifier
-from data import load_imbalanced_dataset, collate_tuples, ContrastiveTupleDataset
+from data import load_imbalanced_dataset, load_balanced_dataset, collate_tuples, ContrastiveTupleDataset
 
 # -----------------------------------------------------
 # CONSTANTS 
 # -----------------------------------------------------
 EPOCHS = 200
 CLF_EPOCHS = 1000
-DATASET_TO_INDIM = { 'mnist': 784, 'fashion_mnist': 784, 'cifar10': 3072 }
-DATASET_TO_SHAPE = { 'mnist': (1, 28, 28), 'fashion_mnist': (1, 28, 28), 'cifar10': (3, 32, 32) }
+N_CLASSES = { 'mnist': 10, 'fashion_mnist': 10, 'cifar10': 10, 'cifar100': 100 }
+DATASET_TO_INDIM = { 'mnist': 784, 'fashion_mnist': 784, 'cifar10': 3072, 'cifar100': 3072 }
+DATASET_TO_SHAPE = { 'mnist': (1, 28, 28), 'fashion_mnist': (1, 28, 28), 'cifar10': (3, 32, 32), 'cifar100': (3, 32, 32) }
 DATASET_MAP = { 'mnist': datasets.MNIST, 'fashion_mnist': datasets.FashionMNIST, 'cifar10': datasets.CIFAR10 }
 
 # Distrust random initialization
@@ -420,7 +421,10 @@ def main(config):
     print("\n" + "-"*60)
     print(f"LOADING {config.dataset.upper()} DATASET")
     print("-"*60)
-    X_train_img, labels_train, X_test_img, labels_test, X_val_img, labels_val, class_sizes = load_imbalanced_dataset(config)
+    if config.dataset != 'cifar100':
+        X_train_img, labels_train, X_test_img, labels_test, X_val_img, labels_val, class_sizes = load_imbalanced_dataset(config)
+    else:
+        X_train_img, labels_train, X_test_img, labels_test, X_val_img, labels_val, class_sizes = load_balanced_dataset(config)
 
     # Train WEIGHTED
     print("\n" + "="*60)
@@ -477,7 +481,7 @@ def main(config):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--dataset', type=str, required=False, default='cifar10', choices=['mnist', 'fashion_mnist', 'cifar10'], help='Real dataset')
+    parser.add_argument('--dataset', type=str, required=False, default='cifar10', choices=['mnist', 'fashion_mnist', 'cifar10', 'cifar100'], help='Real dataset')
     parser.add_argument('--patience', type=int, required=False, default=20, help='Early stopping patience')
     parser.add_argument('--model', type=str, required=False, default='cnn', choices=['cnn', 'dnn'], help='Model architecture type')
     parser.add_argument('--clf_model', type=str, required=False, default='clf', choices=['knn', 'clf'], help='Classification model type')
@@ -495,6 +499,7 @@ if __name__ == '__main__':
         n_samples=args['N'],
         m_incomplete=args['M'], 
         rho_max=args['rho_max'],
-        patience=args['patience']
+        patience=args['patience'],
+        n_classes=N_CLASSES[args['dataset']]
     )
     main(config)
