@@ -30,7 +30,7 @@ class ContrastiveConfig:
 # -----------------------------------------------------
 # Create highly imbalanced dataset
 # -----------------------------------------------------
-def create_imbalanced_dataset(config, seed=42):
+def create_imbalanced_dataset(config, seed=123):
     """
     Create dataset where one class dominates (40-50% of data)
     and remaining classes have decreasing frequencies
@@ -294,25 +294,9 @@ def sample_tuple(X, labels, k, class_r, avoid_collision=False):
     return (anchor_idx, pos_idx, neg_indices)
 
 # -----------------------------------------------------
-# Estimate collision probability
-# -----------------------------------------------------
-def estimate_collision_probability(labels, k):
-    labels_np = labels.cpu().numpy()
-    n = len(labels_np)
-    classes, counts = np.unique(labels_np, return_counts=True)
-    rho = counts / n
-    tau = 1 - np.sum(rho * (1 - rho)**k)
-    return float(tau)
-
-# -----------------------------------------------------
 # Single tuple loss (for evaluation)
 # -----------------------------------------------------
 def contrastive_loss(anchor, positive, negatives, temperature):
-    """
-    anchor: (d,)
-    positive: (d,)
-    negatives: (k, d)
-    """
     pos_sim = (anchor * positive).sum() / temperature
     neg_sims = (negatives @ anchor) / temperature
     v = pos_sim - neg_sims
@@ -371,9 +355,6 @@ def train_contrastive_model(X_train_np, labels_train_np, X_test_np, labels_test_
     
     encoder = SimpleEncoder(config.n_features, output_dim=16).to(device)
     optimizer = torch.optim.Adam(encoder.parameters(), lr=1e-3, amsgrad=True)
-    
-    # Estimate collision probability
-    tau_hat = estimate_collision_probability(labels_train, config.k_negatives)
     
     loss_history = []
     test_loss_history = []
