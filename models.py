@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision.models.resnet import resnet50, resnet18
+
+RESNET_ARCHS = { 'resnet18': resnet18, 'resnet50': resnet50 }
+RESNET_OUTDIMS = { 'resnet18': 512, 'resnet50': 2048 }
 
 # Classifier
 class LinearClassifier(nn.Module):
@@ -112,3 +116,26 @@ class CNNEncoder(nn.Module):
 
         return F.normalize(x, dim=-1)
 
+# Resnet
+class ResnetEncoder(nn.Module):
+    def __init__(self, in_channels=3, hidden_dim=128, output_dim=64):
+        super().__init__()
+
+        self.f = []
+        self.arch = 'resnet18'
+        for name, module in RESNET_ARCHS[self.arch]().named_children(): # resnet50().named_children():
+            if name == 'conv1':
+                module = nn.Conv2d(in_channels, 64, kernel_size=3, stride=1, padding=1, bias=False)
+            if not isinstance(module, nn.Linear) and not isinstance(module, nn.MaxPool2d):
+                self.f.append(module)
+        # encoder
+        self.f = nn.Sequential(*self.f)
+        # projection head
+        self.g = nn.Sequential(nn.Linear(RESNET_OUTDIMS[self.arch], hidden_dim, bias=False), nn.BatchNorm1d(hidden_dim),
+                               nn.ReLU(inplace=True), nn.Linear(hidden_dim, output_dim, bias=True))
+
+    def forward(self, x):
+        x = self.f(x)
+        feature = torch.flatten(x, start_dim=1)
+        out = self.g(feature)
+        return F.normalize(out, dim=-1)

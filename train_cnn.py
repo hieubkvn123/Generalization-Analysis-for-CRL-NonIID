@@ -15,7 +15,7 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
 
-from models import CNNEncoder, DNNEncoder, LinearClassifier
+from models import CNNEncoder, DNNEncoder, ResnetEncoder, LinearClassifier
 from data import load_imbalanced_dataset, load_balanced_dataset, collate_tuples, ContrastiveTupleDataset
 
 # -----------------------------------------------------
