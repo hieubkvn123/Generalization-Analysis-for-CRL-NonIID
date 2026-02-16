@@ -120,7 +120,7 @@ def load_imbalanced_dataset(config, seed=42):
     
     return X_train, labels_train, X_test, labels_test, X_val, labels_val, class_sizes
 
-def load_balanced_dataset(config, seed=42):
+def load_balanced_dataset(config, multiplier=0.9, seed=42):
     set_seed(seed)
 
     # Define transforms
@@ -151,34 +151,40 @@ def load_balanced_dataset(config, seed=42):
     test_images = torch.stack(test_images)
     test_labels = torch.tensor(test_labels)
 
-    # Calculate empirical class distribution from original dataset
+    # Create exponentially decreasing class distribution
     n = config.n_samples
     n_classes = config.n_classes
 
-    # Count samples per class in original training set
-    label_counts = Counter(train_labels.numpy())
-    total_samples = len(train_labels)
-
-    # Calculate empirical probabilities
-    empirical_probs = np.array([label_counts[c] / total_samples for c in range(n_classes)])
-
-    # Distribute n_samples according to empirical probabilities
+    # Group classes into sets of 20 with exponentially decreasing samples
     class_sizes = np.zeros(n_classes, dtype=int)
-    for i in range(n_classes):
-        class_sizes[i] = int(empirical_probs[i] * n)
+
+    # Calculate total weight (sum of geometric series)
+    # Group 0: weight = 1, Group 1: weight = 0.5, Group 2: weight = 0.25, etc.
+    num_groups = (n_classes + 19) // 20  # Ceiling division
+    total_weight = sum(20 * (multiplier ** i) for i in range(num_groups - 1))
+    # Handle last group if it has fewer than 20 classes
+    last_group_size = n_classes - 20 * (num_groups - 1)
+    total_weight += last_group_size * (multiplier ** (num_groups - 1))
+
+    # Calculate base samples per class (for the first 20 classes)
+    base_samples = n / total_weight
+
+    # Assign samples to each class based on its group
+    for c in range(n_classes):
+        group_idx = c // 20
+        class_sizes[c] = int(base_samples * (multiplier ** group_idx))
 
     # Adjust to exactly match n_samples (handle rounding)
     diff = n - class_sizes.sum()
     if diff > 0:
-        # Add remaining samples to largest classes
-        largest_classes = np.argsort(empirical_probs)[::-1]
+        # Add remaining samples to largest classes (first 20)
         for i in range(diff):
-            class_sizes[largest_classes[i % n_classes]] += 1
+            class_sizes[i % min(20, n_classes)] += 1
     elif diff < 0:
-        # Remove excess samples from largest classes
-        largest_classes = np.argsort(empirical_probs)[::-1]
+        # Remove excess samples from largest classes (first 20)
         for i in range(abs(diff)):
-            class_sizes[largest_classes[i % n_classes]] -= 1
+            if class_sizes[i % min(20, n_classes)] > 0:
+                class_sizes[i % min(20, n_classes)] -= 1
 
     # Sample from each class
     selected_indices = []
