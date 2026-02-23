@@ -17,6 +17,30 @@ class LinearClassifier(nn.Module):
     def forward(self, x):
         return self.linear(x)
 
+class NonlinearClassifier(nn.Module):
+    def __init__(self, input_dim, n_classes, hidden_dim=256):
+        super().__init__()
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.bn_fc1 = nn.BatchNorm1d(hidden_dim)
+        self.lrelu1 = nn.LeakyReLU(0.01)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.bn_fc2 = nn.BatchNorm1d(hidden_dim)
+        self.lrelu2 = nn.LeakyReLU(0.01)
+        self.g = nn.Linear(hidden_dim, n_classes)
+        nn.init.normal_(self.fc1.weight, std=0.01)
+        nn.init.normal_(self.fc2.weight, std=0.01)
+        nn.init.normal_(self.g.weight, std=0.01)
+    
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.bn_fc1(x)
+        x = self.lrelu1(x)
+        x = self.fc2(x)
+        x = self.bn_fc2(x)
+        x = self.lrelu2(x)
+        x = self.g(x)
+        return x 
+
 # DNN Definition
 class DNNEncoder(nn.Module):
     def __init__(self, input_dim, in_channels=1, hidden_dim=128, output_dim=64):

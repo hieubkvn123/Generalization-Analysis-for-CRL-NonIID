@@ -15,7 +15,7 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
 
-from models import CNNEncoder, DNNEncoder, ResnetEncoder, LinearClassifier
+from models import CNNEncoder, DNNEncoder, ResnetEncoder, LinearClassifier, NonlinearClassifier
 from data import load_imbalanced_dataset, load_balanced_dataset, collate_tuples, ContrastiveTupleDataset
 
 # -----------------------------------------------------
@@ -47,7 +47,7 @@ class ContrastiveConfig:
     n_classes: int = 10
     k_negatives: int = 5
     rho_max: float = 0.45
-    temperature: float = 0.5
+    temperature: float = 0.05
     batch_size: int = 64 
     m_incomplete: int = 5000 
     test_size: int = 10000 
@@ -267,6 +267,7 @@ def train_contrastive_model(X_train, labels_train, X_val, labels_val, X_test, la
         num_workers=0
     )
     
+    best_loss = float('inf')
     best_model, best_acc, epoch_no_improve = encoder, 0.0, 0
     for epoch in range(n_epochs):
         epoch_loss = 0.0
@@ -314,6 +315,7 @@ def train_contrastive_model(X_train, labels_train, X_val, labels_val, X_test, la
         if acc_knn >= best_acc:
             epoch_no_improve = 0
             best_model, best_acc = encoder.state_dict(), acc_knn
+            # best_model, best_loss = encoder.state_dict(), avg_epoch_loss
             print(f' - Update model at epoch {epoch}, new best (KNN) accuracy = {acc_knn:.5f}, avg train loss = {avg_epoch_loss:.5f}')
         else:
             epoch_no_improve += 1
@@ -364,6 +366,8 @@ def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test,
     
     embedding_dim = train_reps.shape[1]
     classifier = LinearClassifier(embedding_dim, config.n_classes).to(device)
+    if config.dataset == 'cifar100':
+        classifier = NonlinearClassifier(embedding_dim, config.n_classes).to(device)
     optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-4, amsgrad=True)
     criterion = nn.CrossEntropyLoss()
     
