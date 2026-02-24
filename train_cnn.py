@@ -47,7 +47,7 @@ class ContrastiveConfig:
     n_classes: int = 10
     k_negatives: int = 5
     rho_max: float = 0.45
-    temperature: float = 0.05
+    temperature: float = 0.01
     batch_size: int = 64 
     m_incomplete: int = 5000 
     test_size: int = 10000 
@@ -339,8 +339,7 @@ def train_contrastive_model(X_train, labels_train, X_val, labels_val, X_test, la
 
 ## FOOTNOTE: A KNN classifier trained on the val dataset then tested on the val dataset gives us the information to the question
 ## "Do data points of a class A generally closer to classes other than A or not"
-
-def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test, config, device, n_epochs=100):
+def train_linear_classifier(encoder, X_train, labels_train, X_val, labels_val, config, device, n_epochs=100):
     print("\n" + "="*60)
     print("TRAINING LINEAR CLASSIFIER")
     print("="*60)
@@ -356,14 +355,14 @@ def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test,
             reps = encoder(batch)
             train_reps.append(reps.cpu())
         train_reps = torch.cat(train_reps, dim=0).to(device)
-        
-        test_reps = []
-        for i in range(0, len(X_test), batch_size):
-            batch = X_test[i:i+batch_size].to(device)
+
+        val_reps = []
+        for i in range(0, len(X_val), batch_size):
+            batch = X_val[i:i+batch_size].to(device)
             reps = encoder(batch)
-            test_reps.append(reps.cpu())
-        test_reps = torch.cat(test_reps, dim=0).to(device)
-    
+            val_reps.append(reps.cpu())
+        val_reps = torch.cat(val_reps, dim=0).to(device)
+        
     embedding_dim = train_reps.shape[1]
     classifier = LinearClassifier(embedding_dim, config.n_classes).to(device)
     if config.dataset == 'cifar100':
@@ -374,17 +373,18 @@ def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test,
     # Create dataloader
     train_dataset = torch.utils.data.TensorDataset(train_reps, labels_train)
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
+    val_dataset = torch.utils.data.TensorDataset(val_reps, labels_val)
+    val_loader = DataLoader(val_dataset, batch_size=config.batch_size, shuffle=False)
     
     print(f"Training for {n_epochs} epochs...")
     print(f"Train representations: {train_reps.shape}")
-    print(f"Test representations: {test_reps.shape}")
+    print(f"Validation representations: {val_reps.shape}")
     
+    best_acc = 0.0
     for epoch in range(n_epochs):
+        # Train
         classifier.train()
-        epoch_loss = 0.0
-        correct = 0
-        total = 0
-        
+        epoch_loss, correct, total = 0.0, 0, 0
         for batch_reps, batch_labels in train_loader:
             optimizer.zero_grad()
             batch_labels = batch_labels.to(device)
@@ -399,12 +399,33 @@ def train_linear_classifier(encoder, X_train, labels_train, X_test, labels_test,
             _, predicted = logits.max(1)
             total += batch_labels.size(0)
             correct += predicted.eq(batch_labels).sum().item()
-        
         train_acc = 100. * correct / total
+
+        # Validate
+        classifier.eval()
+        correct, total = 0, 0
+        for batch_reps, batch_labels in val_loader:
+            batch_labels = batch_labels.to(device)
+            logits = classifier(batch_reps)
+            _, predicted = logits.max(1)
+            total += batch_labels.size(0)
+            correct += predicted.eq(batch_labels).sum().item()
+        val_acc = 100. * correct / total
+
+        # Update model
+        if val_acc >= best_acc:
+            best_acc = val_acc
+            epoch_no_improve = 0
+        else:
+            epoch_no_improve += 1
+
+        # Early stop
+        if epoch_no_improve >= config.patience // 2:
+            print(f'Early stopping triggered at epoch {epoch}')
+            break
         
         if (epoch + 1) % 20 == 0 or epoch == 0:
-            print(f"Epoch {epoch+1:3d} | Loss: {epoch_loss/len(train_loader):.4f} | Train Acc: {train_acc:.2f}%")
-    
+            print(f"Epoch {epoch+1:3d} | Loss: {epoch_loss/len(train_loader):.4f} | Train Acc: {train_acc:.2f}% | Val Acc: {val_acc:.2f}")
     return classifier
 
 
@@ -444,7 +465,7 @@ def main(config):
     print("\n--- Training classifier on WEIGHTED encoder ---")
     classifier_weighted = train_linear_classifier(
         encoder_weighted, X_train_img, labels_train,
-        X_test_img, labels_test, config, device, n_epochs=CLF_EPOCHS
+        X_val_img, labels_val, config, device, n_epochs=CLF_EPOCHS
     )
     clf_result_weighted = evaluate_classifier_rare_classes(
         classifier_weighted, encoder_weighted, X_test_img, labels_test,
@@ -464,8 +485,8 @@ def main(config):
     # Train classifier unweighted
     print("\n--- Training classifier on UNWEIGHTED encoder ---")
     classifier_unweighted = train_linear_classifier(
-        encoder_unweighted, X_train_img, labels_train,
-        X_test_img, labels_test, config, device, n_epochs=CLF_EPOCHS
+        encoder_unweighted, X_train_img, labels_train, 
+        X_val_img, labels_val, config, device, n_epochs=CLF_EPOCHS
     )
     clf_result_unweighted = evaluate_classifier_rare_classes(
         classifier_unweighted, encoder_unweighted, X_test_img, labels_test,

@@ -23,9 +23,11 @@ class NonlinearClassifier(nn.Module):
         self.fc1 = nn.Linear(input_dim, hidden_dim)
         self.bn_fc1 = nn.BatchNorm1d(hidden_dim)
         self.lrelu1 = nn.LeakyReLU(0.01)
+        self.drop1  = nn.Dropout(0.3)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
         self.bn_fc2 = nn.BatchNorm1d(hidden_dim)
         self.lrelu2 = nn.LeakyReLU(0.01)
+        self.drop2  = nn.Dropout(0.3)
         self.g = nn.Linear(hidden_dim, n_classes)
         nn.init.normal_(self.fc1.weight, std=0.01)
         nn.init.normal_(self.fc2.weight, std=0.01)
@@ -35,9 +37,11 @@ class NonlinearClassifier(nn.Module):
         x = self.fc1(x)
         x = self.bn_fc1(x)
         x = self.lrelu1(x)
+        x = self.drop1(x)
         x = self.fc2(x)
         x = self.bn_fc2(x)
         x = self.lrelu2(x)
+        x = self.drop2(x)
         x = self.g(x)
         return x 
 
