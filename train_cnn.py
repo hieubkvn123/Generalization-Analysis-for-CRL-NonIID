@@ -47,7 +47,7 @@ class ContrastiveConfig:
     n_classes: int = 10
     k_negatives: int = 5
     rho_max: float = 0.45
-    temperature: float = 0.01
+    temperature: float = 0.05
     batch_size: int = 64 
     m_incomplete: int = 5000 
     test_size: int = 10000 
